@@ -40,9 +40,33 @@ func (p *Player) Play (channel int) (bool, error) {
 	return channelPlay(channel)
 }
 
+func (p *Player) Pause (channel int) (bool, error) {
+	if !p.initialized {
+		return false, errors.New("Player is not initialized")
+	}
+	return channelPause(channel)
+}
+
+func (p *Player) Stop (channel int) (bool, error) {
+	if !p.initialized {
+		return false, errors.New("Player is not initialized")
+	}
+	return channelStop(channel)
+}
+
 func (p *Player) IsChannelActive (channel int) (bool, error) {
 	if !p.initialized {
 		return false, errors.New("Player is not initialized")
 	}
 	return channelIsActive(channel)
+}
+
+func (p *Player) SetVolume(channel int, vol float32) error {
+	if !p.initialized {
+		return errors.New("Player is not initialized")
+	}
+	if _, err := channelSetVolume(channel, vol); err != nil {
+		return errors.Wrapf(err, "Failed to set volume with error: %+v", err)
+	}
+	return nil
 }

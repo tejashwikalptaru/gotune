@@ -44,6 +44,34 @@ func channelPlay(ch int) (bool, error) {
 	}
 }
 
+func channelPause(ch int) (bool, error) {
+	if C.BASS_ChannelPause(C.DWORD(ch)) != 0 {
+		return true, nil
+	} else {
+		return false, errMsg(int(C.BASS_ErrorGetCode()))
+	}
+}
+
+func channelStop(ch int) (bool, error) {
+	if C.BASS_ChannelStop(C.DWORD(ch)) != 0 {
+		return true, nil
+	} else {
+		return false, errMsg(int(C.BASS_ErrorGetCode()))
+	}
+}
+
+func channelSetAttribute(ch int, attrib int, value float32) (bool, error) {
+	if C.BASS_ChannelSetAttribute(C.DWORD(ch), C.DWORD(attrib), C.float(value)) != 0 {
+		return true, nil
+	} else {
+		return false, errMsg(int(C.BASS_ErrorGetCode()))
+	}
+}
+
+func channelSetVolume(ch int, value float32) (bool, error) {
+	return channelSetAttribute(ch, AttribVol, value/100)
+}
+
 func channelIsActive(ch int) (bool, error) {
 	if C.BASS_ChannelIsActive(C.DWORD(ch)) != 0 {
 		return true, nil

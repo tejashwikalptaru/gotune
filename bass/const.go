@@ -9,3 +9,4 @@ import "C"
 
 const MusicRamps int = C.BASS_MUSIC_RAMPS
 const MusicPreScan int = C.BASS_MUSIC_PRESCAN
+const AttribVol int = C.BASS_ATTRIB_VOL

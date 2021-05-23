@@ -19,6 +19,9 @@ func main() {
 	}(player)
 
 	app := ui.NewMainWindow()
+	player.SetUpdateElapsedTimeFunc(app.SetCurrentTime())
+	player.SetUpdateEndTimeFunc(app.SetEndTime())
+
 	app.PlayFunc(func() {
 		status, err := player.Status()
 		if err != nil {
@@ -35,7 +38,7 @@ func main() {
 			return
 		}
 
-		err = player.MusicLoad("/Users/tejashwi/projects/personal/gotune/build/mktheme.it", bass.MusicRamps | bass.MusicPreScan)
+		err = player.MusicLoad("/Users/tejashwi/projects/personal/gotune/build/mktheme.it", bass.MusicRamps | bass.MusicPreScan | bass.MusicAutoFree)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -45,6 +48,10 @@ func main() {
 			log.Fatal(err)
 		}
 		app.SetPlayState(true)
+	})
+	app.StopFunc(func() {
+		player.Stop()
+		app.SetPlayState(false)
 	})
 	app.ShowAndRun()
 }

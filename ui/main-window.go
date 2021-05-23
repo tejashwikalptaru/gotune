@@ -17,12 +17,14 @@ type Main struct {
 	app    fyne.App
 	window fyne.Window
 
-	prevButton *widget.Button
-	playButton *widget.Button
-	stopButton *widget.Button
-	nextButton *widget.Button
-	muteButton *widget.Button
-	songInfo   *widget.Label
+	prevButton  *widget.Button
+	playButton  *widget.Button
+	stopButton  *widget.Button
+	nextButton  *widget.Button
+	muteButton  *widget.Button
+	songInfo    *widget.Label
+	currentTime *widget.Label
+	endTime     *widget.Label
 
 	albumArt *canvas.Image
 }
@@ -65,10 +67,10 @@ func (main *Main) controls() fyne.CanvasObject {
 	buttonsHolder := container.NewHBox(main.prevButton, main.playButton, main.stopButton, main.nextButton, main.muteButton, main.songInfo)
 
 	mediaSlider := widget.NewSlider(0, 100)
-	startTime := widget.NewLabel("00:00:00")
-	endTime := widget.NewLabel("00:00:00")
+	main.currentTime = widget.NewLabel("00:00:00")
+	main.endTime = widget.NewLabel("00:00:00")
 
-	sliderHolder := container.NewGridWithColumns(3, startTime, mediaSlider, endTime)
+	sliderHolder := container.NewGridWithColumns(3, main.currentTime, mediaSlider, main.endTime)
 
 	return container.NewVBox(buttonsHolder, sliderHolder)
 }
@@ -93,6 +95,10 @@ func (main *Main) PlayFunc(f func()) {
 	main.playButton.OnTapped = f
 }
 
+func (main *Main) StopFunc(f func()) {
+	main.stopButton.OnTapped = f
+}
+
 func (main *Main) SetPlayState(playing bool) {
 	if playing {
 		main.playButton.SetIcon(theme.MediaPauseIcon())
@@ -109,4 +115,12 @@ func (main *Main) SetAlbumArt(imgByte []byte) {
 	}
 	main.albumArt.Image = img
 	main.albumArt.Refresh()
+}
+
+func (main *Main) SetCurrentTime() func(text string) {
+	return main.currentTime.SetText
+}
+
+func (main *Main) SetEndTime() func(text string) {
+	return main.endTime.SetText
 }

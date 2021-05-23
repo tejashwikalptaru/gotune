@@ -81,6 +81,22 @@ func channelStatus(ch int) ChannelStatus {
 	return ChannelStatus(status)
 }
 
+func channelLength(ch int) int64 {
+	QWord := C.BASS_ChannelGetLength(C.DWORD(ch), C.BASS_POS_BYTE)
+	return int64(QWord)
+}
+
+func channelPosition(ch int) int64 {
+	QWord := C.BASS_ChannelGetPosition(C.DWORD(ch), C.BASS_POS_BYTE)
+	return int64(QWord)
+}
+
+func channelPositionToSeconds(ch int, pos int64) float64 {
+	seconds := C.BASS_ChannelBytes2Seconds(C.DWORD(ch), C.QWORD(pos))
+	return float64(seconds)
+}
+
+
 func errMsg(c int) *Error {
 	if c == 0 {
 		return nil

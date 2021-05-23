@@ -1,16 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"github.com/tejashwikalptaru/gotune/bass"
 	"github.com/tejashwikalptaru/gotune/ui"
 	"log"
 )
 
 func main() {
-	app := ui.NewMainWindow()
-	app.ShowAndRun()
-	player, err := bass.New(-1, 44100, 0)
+	player, err := bass.New(-1, 44100, bass.InitFlag3D | bass.InitFlagSTEREO)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -21,23 +18,33 @@ func main() {
 		}
 	}(player)
 
-	channel, err := player.MusicLoad("/Users/tejashwi/projects/personal/gotune/build/mktheme.it", bass.MusicRamps | bass.MusicPreScan)
-	if err != nil {
-		log.Fatal(err)
-	}
-	_ = player.SetVolume(channel, 5)
-	_, err = player.Play(channel)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for {
-		active, err := player.IsChannelActive(channel)
+	app := ui.NewMainWindow()
+	app.PlayFunc(func() {
+		status, err := player.Status()
 		if err != nil {
 			log.Fatal(err)
 		}
-		if !active {
-			break
+		if status == bass.ChannelStatusPlaying {
+			_, _ = player.Pause()
+			app.SetPlayState(false)
+			return
 		}
-	}
-	fmt.Println("Done playing")
+		if status == bass.ChannelStatusStalled || status == bass.ChannelStatusPaused {
+			_ ,_ = player.Play()
+			app.SetPlayState(true)
+			return
+		}
+
+		err = player.MusicLoad("/Users/tejashwi/projects/personal/gotune/build/mktheme.it", bass.MusicRamps | bass.MusicPreScan)
+		if err != nil {
+			log.Fatal(err)
+		}
+		_ = player.SetVolume(5)
+		_, err = player.Play()
+		if err != nil {
+			log.Fatal(err)
+		}
+		app.SetPlayState(true)
+	})
+	app.ShowAndRun()
 }

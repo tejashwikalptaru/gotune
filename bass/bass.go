@@ -11,7 +11,7 @@ import (
 	"unsafe"
 )
 
-func initBass(device int, freq int, flags int) (bool, error) {
+func initBass(device int, freq int, flags InitFlags) (bool, *Error) {
 	if C.BASS_Init(C.int(device), C.DWORD(freq), C.DWORD(flags), nil, nil) != 0 {
 		return true, nil
 	} else {
@@ -19,7 +19,7 @@ func initBass(device int, freq int, flags int) (bool, error) {
 	}
 }
 
-func freeBass() (bool, error) {
+func freeBass() (bool, *Error) {
 	if C.BASS_Free() != 0 {
 		return true, nil
 	} else {
@@ -27,8 +27,8 @@ func freeBass() (bool, error) {
 	}
 }
 
-func musicLoad(file string, flags int) (int, error) {
-	ch := C.BASS_MusicLoad(0, unsafe.Pointer(C.CString(file)), 0, 0, C.BASS_MUSIC_RAMPS|C.BASS_MUSIC_PRESCAN, 1)
+func musicLoad(file string, flags int) (int, *Error) {
+	ch := C.BASS_MusicLoad(0, unsafe.Pointer(C.CString(file)), 0, 0, C.uint(flags), 1)
 	if ch != 0 {
 		return int(ch), nil
 	} else {
@@ -36,15 +36,19 @@ func musicLoad(file string, flags int) (int, error) {
 	}
 }
 
-func channelPlay(ch int) (bool, error) {
-	if C.BASS_ChannelPlay(C.DWORD(ch), 1) != 0 {
+func channelPlay(ch int, restart bool) (bool, *Error) {
+	restartIntVal := 0
+	if restart {
+		restartIntVal = 1
+	}
+	if C.BASS_ChannelPlay(C.DWORD(ch), C.int(restartIntVal)) != 0 {
 		return true, nil
 	} else {
 		return false, errMsg(int(C.BASS_ErrorGetCode()))
 	}
 }
 
-func channelPause(ch int) (bool, error) {
+func channelPause(ch int) (bool, *Error) {
 	if C.BASS_ChannelPause(C.DWORD(ch)) != 0 {
 		return true, nil
 	} else {
@@ -52,7 +56,7 @@ func channelPause(ch int) (bool, error) {
 	}
 }
 
-func channelStop(ch int) (bool, error) {
+func channelStop(ch int) (bool, *Error) {
 	if C.BASS_ChannelStop(C.DWORD(ch)) != 0 {
 		return true, nil
 	} else {
@@ -60,7 +64,7 @@ func channelStop(ch int) (bool, error) {
 	}
 }
 
-func channelSetAttribute(ch int, attrib int, value float32) (bool, error) {
+func channelSetAttribute(ch int, attrib int, value float32) (bool, *Error) {
 	if C.BASS_ChannelSetAttribute(C.DWORD(ch), C.DWORD(attrib), C.float(value)) != 0 {
 		return true, nil
 	} else {
@@ -68,18 +72,16 @@ func channelSetAttribute(ch int, attrib int, value float32) (bool, error) {
 	}
 }
 
-func channelSetVolume(ch int, value float32) (bool, error) {
+func channelSetVolume(ch int, value float32) (bool, *Error) {
 	return channelSetAttribute(ch, AttribVol, value/100)
 }
 
-func channelIsActive(ch int) (bool, error) {
-	if C.BASS_ChannelIsActive(C.DWORD(ch)) != 0 {
-		return true, nil
-	}
-	return false, errMsg(int(C.BASS_ErrorGetCode()))
+func channelStatus(ch int) ChannelStatus {
+	status := C.BASS_ChannelIsActive(C.DWORD(ch))
+	return ChannelStatus(status)
 }
 
-func errMsg(c int) error {
+func errMsg(c int) *Error {
 	if c == 0 {
 		return nil
 	}
@@ -112,7 +114,7 @@ func errMsg(c int) error {
 	codes[37] = "requested data is not available"
 	codes[38] = "the channel is/isn't a 'decoding channel'"
 	codes[39] = "a sufficient DirectX version is not installed"
-	codes[40] = "connection timedout"
+	codes[40] = "connection timed out"
 	codes[41] = "unsupported file format"
 	codes[42] = "unavailable speaker"
 	codes[43] = "invalid BASS version (used by add-ons)"
@@ -120,5 +122,8 @@ func errMsg(c int) error {
 	codes[45] = "the channel/file has ended"
 	codes[46] = "the device is busy"
 	codes[-1] = "some other mystery problem"
-	return errors.New(codes[c])
+	return &Error{
+		Err:  errors.New(codes[c]),
+		Code: ErrorCode(c),
+	}
 }

@@ -81,20 +81,38 @@ func channelStatus(ch int) ChannelStatus {
 	return ChannelStatus(status)
 }
 
-func channelLength(ch int) int64 {
+func channelLength(ch int) float64 {
 	QWord := C.BASS_ChannelGetLength(C.DWORD(ch), C.BASS_POS_BYTE)
-	return int64(QWord)
+	return float64(QWord)
 }
 
-func channelPosition(ch int) int64 {
+func channelPosition(ch int) float64 {
 	QWord := C.BASS_ChannelGetPosition(C.DWORD(ch), C.BASS_POS_BYTE)
-	return int64(QWord)
+	return float64(QWord)
 }
 
-func channelPositionToSeconds(ch int, pos int64) float64 {
+func channelBytes2Seconds(ch int, pos float64) float64 {
 	seconds := C.BASS_ChannelBytes2Seconds(C.DWORD(ch), C.QWORD(pos))
 	return float64(seconds)
 }
+
+//func channelRemoveSync(ch, hSync int64) bool {
+//	if ok := C.BASS_ChannelRemoveSync(C.DWORD(ch), C.DWORD(hSync)); ok != 0 {
+//		return true
+//	}
+//	return false
+//}
+//
+//func cgoSyncProc(handle C.HSYNC, channel C.DWORD, data C.DWORD, user *C.void){
+//	// Your Go code here
+//}
+//
+//
+//// HSYNC BASSDEF(BASS_ChannelSetSync)(DWORD handle, DWORD type, QWORD param, SYNCPROC *proc, void *user);
+//func channelSetSync(ch, flags int, param int64, user *int) int64 {
+//	hSync := C.BASS_ChannelSetSync(C.DWORD(ch), C.DWORD(flags), C.QWORD(param), C.SYNCPROC(cgoSyncProc) , unsafe.Pointer(user))
+//	return int64(hSync)
+//}
 
 
 func errMsg(c int) *Error {

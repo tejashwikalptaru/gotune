@@ -19,39 +19,47 @@ func main() {
 	}(player)
 
 	app := ui.NewMainWindow()
-	player.SetUpdateElapsedTimeFunc(app.SetCurrentTime())
-	player.SetUpdateEndTimeFunc(app.SetEndTime())
 
 	app.PlayFunc(func() {
-		status, err := player.Status()
-		if err != nil {
-			log.Fatal(err)
-		}
+		status, _ := player.Status()
 		if status == bass.ChannelStatusPlaying {
 			_, _ = player.Pause()
-			app.SetPlayState(false)
 			return
 		}
 		if status == bass.ChannelStatusStalled || status == bass.ChannelStatusPaused {
 			_ ,_ = player.Play()
-			app.SetPlayState(true)
 			return
 		}
 
-		err = player.MusicLoad("/Users/tejashwi/projects/personal/gotune/build/mktheme.it", bass.MusicRamps | bass.MusicPreScan | bass.MusicAutoFree)
+		err := player.MusicLoad("/Users/tejashwi/projects/personal/gotune/build/mktheme.it", bass.MusicRamps | bass.MusicPreScan | bass.MusicAutoFree)
 		if err != nil {
 			log.Fatal(err)
+			return
 		}
-		_ = player.SetVolume(5)
-		_, err = player.Play()
-		if err != nil {
-			log.Fatal(err)
-		}
-		app.SetPlayState(true)
+		_, _ = player.Play()
+	})
+	app.MuteFunc(func() {
+		mute := !player.IsMute()
+		player.Mute(mute)
+		app.SetMuteState(mute)
 	})
 	app.StopFunc(func() {
 		player.Stop()
+	})
+	player.ChannelLoadedCallBack(func(status bass.ChannelStatus, totalTime float64, channel int) {
+		app.SetTotalTime(totalTime)
+	})
+	player.StatusCallBack(func(status bass.ChannelStatus, elapsed float64) {
+		if status == bass.ChannelStatusPlaying {
+			app.SetPlayState(true)
+			app.SetCurrentTime(elapsed)
+			return
+		}
+		if status == bass.ChannelStatusStopped || status == bass.ChannelStatusStalled {
+			app.SetCurrentTime(0)
+		}
 		app.SetPlayState(false)
 	})
+	app.AddShortCuts()
 	app.ShowAndRun()
 }

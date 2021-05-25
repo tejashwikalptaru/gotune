@@ -1,20 +1,24 @@
 package bass
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
-	"math"
+	"time"
 )
+
+type StatusCallBack func(status ChannelStatus, elapsed float64)
+type ChannelLoadedCallBack func(status ChannelStatus, totalTime float64, channel int)
 
 type Player struct {
 	initialized    bool
 	currentChannel int
-	quitTimeUpdate chan bool
-	timeElapsed    float64
+	currentVolume  float32
+	mute           bool
 
-	// update callbacks
-	updateElapsedTimeFunc func(text string)
-	updateEndTimeFunc func(text string)
+	killUpdateRoutine chan bool
+
+	// callbacks
+	statusCallBackFunc    StatusCallBack
+	channelLoadedCallBack ChannelLoadedCallBack
 }
 
 func New(device, frequency int, flag InitFlags) (*Player, error) {
@@ -23,22 +27,23 @@ func New(device, frequency int, flag InitFlags) (*Player, error) {
 		return nil, errors.Wrapf(err.Err, "Failed to initialize lib bass with error: %+v", err)
 	}
 	player := Player{
-		initialized:    init,
-		currentChannel: 0,
-		quitTimeUpdate: make(chan bool),
+		initialized:       init,
+		currentChannel:    0,
+		killUpdateRoutine: make(chan bool),
+		mute:              false,
+		currentVolume:     5,
 	}
-	player.threadTimeUpdate()
+	player.updateRoutine()
 	return &player, nil
 }
 
 func (p *Player) Free() error {
 	if p.initialized {
+		p.initialized = false
+		p.killUpdateRoutine <- true
 		if _, err := freeBass(); err != nil {
 			return errors.Wrapf(err.Err, "Failed to free lib bass with error: %+v", err)
 		}
-		p.initialized = false
-		// kill time update routine
-		p.quitTimeUpdate <- true
 	}
 	return nil
 }
@@ -49,12 +54,11 @@ func (p *Player) MusicLoad(path string, flags int) *Error {
 	}
 	channel, err := musicLoad(path, flags)
 	p.currentChannel = channel
-
-	if p.updateEndTimeFunc != nil {
-		posByte := channelLength(p.currentChannel)
-		totalTime := channelPositionToSeconds(p.currentChannel, posByte)
-		fmt.Println(totalTime)
-		p.updateEndTimeFunc(fmt.Sprintf("%.2d:%.2d", int(totalTime/60), int(math.Mod(totalTime, 60))))
+	p.SetVolume(p.currentVolume)
+	if p.channelLoadedCallBack != nil {
+		status, _ := p.Status()
+		total := channelBytes2Seconds(p.currentChannel, channelLength(p.currentChannel))
+		p.channelLoadedCallBack(status, total, p.currentChannel)
 	}
 	return err
 }
@@ -99,41 +103,55 @@ func (p *Player) SetVolume(vol float32) *Error {
 	if !p.initialized {
 		return errMsg(8)
 	}
+	p.currentVolume = vol
 	if _, err := channelSetVolume(p.currentChannel, vol); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (p *Player) SetUpdateElapsedTimeFunc ( f func(text string)) {
-	p.updateElapsedTimeFunc = f
+func (p *Player) Mute(mute bool) *Error {
+	if !p.initialized {
+		return errMsg(8)
+	}
+	if mute {
+		p.mute = true
+		temp := p.currentVolume
+		err := p.SetVolume(0)
+		p.currentVolume = temp
+		return err
+	}
+	p.mute = false
+	return p.SetVolume(p.currentVolume)
 }
 
-func (p *Player) SetUpdateEndTimeFunc ( f func(text string)) {
-	p.updateEndTimeFunc = f
+func (p *Player) IsMute() bool {
+	return p.mute
 }
 
-func (p *Player) threadTimeUpdate() {
+func (p *Player) StatusCallBack(f StatusCallBack) {
+	p.statusCallBackFunc = f
+}
+
+func (p *Player) ChannelLoadedCallBack(f ChannelLoadedCallBack) {
+	p.channelLoadedCallBack = f
+}
+
+func (p *Player) updateRoutine() {
 	go func() {
 		for {
 			select {
-			case <-p.quitTimeUpdate:
+			case <-p.killUpdateRoutine:
+				close(p.killUpdateRoutine)
 				return
 			default:
 				status, _ := p.Status()
-				if status == ChannelStatusPlaying {
-					posByte := channelPosition(p.currentChannel)
-					p.timeElapsed = channelPositionToSeconds(p.currentChannel, posByte)
-					if p.updateElapsedTimeFunc != nil {
-						p.updateElapsedTimeFunc(fmt.Sprintf("%.2d:%.2d", int(p.timeElapsed/60), int(math.Mod(p.timeElapsed, 60))))
-					}
+				timeElapsed := channelBytes2Seconds(p.currentChannel, channelPosition(p.currentChannel))
+				if p.statusCallBackFunc != nil {
+					p.statusCallBackFunc(status, timeElapsed)
 				}
-				if status == ChannelStatusStopped || status == ChannelStatusStalled {
-					p.timeElapsed = 0
-					if p.updateElapsedTimeFunc != nil {
-						p.updateElapsedTimeFunc(fmt.Sprintf("%.2d:%.2d", int(p.timeElapsed/60), int(math.Mod(p.timeElapsed, 60))))
-					}
-				}
+				// very important to give some rest to CPU
+				time.Sleep(time.Second / 2)
 			}
 		}
 	}()

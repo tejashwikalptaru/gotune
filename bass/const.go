@@ -7,10 +7,10 @@ package bass
 */
 import "C"
 
-const MusicRamps int = C.BASS_MUSIC_RAMPS
-const MusicPreScan int = C.BASS_MUSIC_PRESCAN
-const MusicAutoFree int = C.BASS_STREAM_AUTOFREE
-const AttribVol int = C.BASS_ATTRIB_VOL
+const musicRamps int = C.BASS_MUSIC_RAMPS
+const musicPreScan int = C.BASS_MUSIC_PRESCAN
+const streamAutoFree int = C.BASS_STREAM_AUTOFREE
+const attribVol int = C.BASS_ATTRIB_VOL
 
 type Error struct {
 	Err  error
@@ -20,10 +20,10 @@ type Error struct {
 type ChannelStatus int
 
 const (
-	ChannelStatusStopped ChannelStatus = 0
-	ChannelStatusPlaying ChannelStatus = 1
-	ChannelStatusStalled ChannelStatus = 2
-	ChannelStatusPaused  ChannelStatus = 3
+	ChannelStatusStopped ChannelStatus = C.BASS_ACTIVE_STOPPED
+	ChannelStatusPlaying ChannelStatus = C.BASS_ACTIVE_PLAYING
+	ChannelStatusStalled ChannelStatus = C.BASS_ACTIVE_STALLED
+	ChannelStatusPaused  ChannelStatus = C.BASS_ACTIVE_PAUSED
 )
 
 type ErrorCode int
@@ -82,4 +82,34 @@ const (
 	InitFlagDMIX       InitFlags = C.BASS_DEVICE_DMIX       // use ALSA "dmix" plugin
 	InitFlagFREQ       InitFlags = C.BASS_DEVICE_FREQ       // set device sample rate
 	InitFlagSTEREO     InitFlags = C.BASS_DEVICE_STEREO     // limit output to stereo
+)
+
+type Tag int
+
+const (
+	TagID3           Tag = C.BASS_TAG_ID3           // ID3v1 tags : TAG_ID3 structure
+	TagID3V2         Tag = C.BASS_TAG_ID3V2         // ID3v2 tags : variable length block
+	TagOGG           Tag = C.BASS_TAG_OGG           // OGG comments : series of null-terminated UTF-8 strings
+	TagHTTP          Tag = C.BASS_TAG_HTTP          // HTTP headers : series of null-terminated ANSI strings
+	TagICY           Tag = C.BASS_TAG_ICY           // ICY headers : series of null-terminated ANSI strings
+	TagMETA          Tag = C.BASS_TAG_META          // ICY metadata : ANSI string
+	TagAPE           Tag = C.BASS_TAG_APE           // APE tags : series of null-terminated UTF-8 strings
+	TagMP4           Tag = C.BASS_TAG_MP4           // MP4/iTunes metadata : series of null-terminated UTF-8 strings
+	TagWMA           Tag = C.BASS_TAG_WMA           // WMA tags : series of null-terminated UTF-8 strings
+	TagVENDOR        Tag = C.BASS_TAG_VENDOR        // OGG encoder : UTF-8 string
+	TagLYRICS3       Tag = C.BASS_TAG_LYRICS3       // Lyric3v2 tag : ASCII string
+	TagCaCODEC      Tag = C.BASS_TAG_CA_CODEC      // CoreAudio codec info : TAG_CA_CODEC structure
+	TagMF            Tag = C.BASS_TAG_MF            // Media Foundation tags : series of null-terminated UTF-8 strings
+	TagWaveFORMAT    Tag = C.BASS_TAG_WAVEFORMAT    // WAVE format : WAVEFORMATEEX structure
+	TagRiffINFO     Tag = C.BASS_TAG_RIFF_INFO     // RIFF "INFO" tags : series of null-terminated ANSI strings
+	TagRiffBEXT     Tag = C.BASS_TAG_RIFF_BEXT     // RIFF/BWF "bext" tags : TAG_BEXT structure
+	TagRiffCART     Tag = C.BASS_TAG_RIFF_CART     // RIFF/BWF "cart" tags : TAG_CART structure
+	TagRiffDISP     Tag = C.BASS_TAG_RIFF_DISP     // RIFF "DISP" text tag : ANSI string
+	TagApeBINARY    Tag = C.BASS_TAG_APE_BINARY    // + index #, binary APE tag : TAG_APE_BINARY structure
+	TagMusicNAME    Tag = C.BASS_TAG_MUSIC_NAME    // MOD music name : ANSI string
+	TagMusicMESSAGE Tag = C.BASS_TAG_MUSIC_MESSAGE // MOD message : ANSI string
+	TagMusicORDERS  Tag = C.BASS_TAG_MUSIC_ORDERS  // MOD order list : BYTE array of pattern numbers
+	TagMusicAUTH    Tag = C.BASS_TAG_MUSIC_AUTH    // MOD author : UTF-8 string
+	TagMusicINST    Tag = C.BASS_TAG_MUSIC_INST    // + instrument #, MOD instrument name : ANSI string
+	TagMusicSAMPLE  Tag = C.BASS_TAG_MUSIC_SAMPLE  // + sample #, MOD sample name : ANSI string
 )

@@ -27,16 +27,25 @@ func freeBass() (bool, *Error) {
 	}
 }
 
-func musicLoad(file string, flags int) (int, *Error) {
-	ch := C.BASS_MusicLoad(0, unsafe.Pointer(C.CString(file)), 0, 0, C.uint(flags), 1)
+func musicLoad(file string, flags int) (int64, *Error) {
+	ch := C.BASS_MusicLoad(0, unsafe.Pointer(C.CString(file)), 0, 0, C.DWORD(flags), 1)
 	if ch != 0 {
-		return int(ch), nil
+		return int64(ch), nil
 	} else {
 		return 0, errMsg(int(C.BASS_ErrorGetCode()))
 	}
 }
 
-func channelPlay(ch int, restart bool) (bool, *Error) {
+func streamCreateFile(file string, flags int) (int64, *Error) {
+	ch := C.BASS_StreamCreateFile(0, unsafe.Pointer(C.CString(file)), 0, 0, C.DWORD(flags))
+	if ch != 0 {
+		return int64(ch), nil
+	} else {
+		return 0, errMsg(int(C.BASS_ErrorGetCode()))
+	}
+}
+
+func channelPlay(ch int64, restart bool) (bool, *Error) {
 	restartIntVal := 0
 	if restart {
 		restartIntVal = 1
@@ -48,7 +57,7 @@ func channelPlay(ch int, restart bool) (bool, *Error) {
 	}
 }
 
-func channelPause(ch int) (bool, *Error) {
+func channelPause(ch int64) (bool, *Error) {
 	if C.BASS_ChannelPause(C.DWORD(ch)) != 0 {
 		return true, nil
 	} else {
@@ -56,7 +65,7 @@ func channelPause(ch int) (bool, *Error) {
 	}
 }
 
-func channelStop(ch int) (bool, *Error) {
+func channelStop(ch int64) (bool, *Error) {
 	if C.BASS_ChannelStop(C.DWORD(ch)) != 0 {
 		return true, nil
 	} else {
@@ -64,7 +73,7 @@ func channelStop(ch int) (bool, *Error) {
 	}
 }
 
-func channelSetAttribute(ch int, attrib int, value float32) (bool, *Error) {
+func channelSetAttribute(ch int64, attrib int, value float32) (bool, *Error) {
 	if C.BASS_ChannelSetAttribute(C.DWORD(ch), C.DWORD(attrib), C.float(value)) != 0 {
 		return true, nil
 	} else {
@@ -72,47 +81,34 @@ func channelSetAttribute(ch int, attrib int, value float32) (bool, *Error) {
 	}
 }
 
-func channelSetVolume(ch int, value float32) (bool, *Error) {
-	return channelSetAttribute(ch, AttribVol, value/100)
+func channelSetVolume(ch int64, value float32) (bool, *Error) {
+	return channelSetAttribute(ch, attribVol, value/100)
 }
 
-func channelStatus(ch int) ChannelStatus {
+func channelStatus(ch int64) ChannelStatus {
 	status := C.BASS_ChannelIsActive(C.DWORD(ch))
 	return ChannelStatus(status)
 }
 
-func channelLength(ch int) float64 {
+func channelLength(ch int64) float64 {
 	QWord := C.BASS_ChannelGetLength(C.DWORD(ch), C.BASS_POS_BYTE)
 	return float64(QWord)
 }
 
-func channelPosition(ch int) float64 {
+func channelPosition(ch int64) float64 {
 	QWord := C.BASS_ChannelGetPosition(C.DWORD(ch), C.BASS_POS_BYTE)
 	return float64(QWord)
 }
 
-func channelBytes2Seconds(ch int, pos float64) float64 {
+func channelBytes2Seconds(ch int64, pos float64) float64 {
 	seconds := C.BASS_ChannelBytes2Seconds(C.DWORD(ch), C.QWORD(pos))
 	return float64(seconds)
 }
 
-//func channelRemoveSync(ch, hSync int64) bool {
-//	if ok := C.BASS_ChannelRemoveSync(C.DWORD(ch), C.DWORD(hSync)); ok != 0 {
-//		return true
-//	}
-//	return false
-//}
-//
-//func cgoSyncProc(handle C.HSYNC, channel C.DWORD, data C.DWORD, user *C.void){
-//	// Your Go code here
-//}
-//
-//
-//// HSYNC BASSDEF(BASS_ChannelSetSync)(DWORD handle, DWORD type, QWORD param, SYNCPROC *proc, void *user);
-//func channelSetSync(ch, flags int, param int64, user *int) int64 {
-//	hSync := C.BASS_ChannelSetSync(C.DWORD(ch), C.DWORD(flags), C.QWORD(param), C.SYNCPROC(cgoSyncProc) , unsafe.Pointer(user))
-//	return int64(hSync)
-//}
+func channelGetMODTags(ch int64, flags Tag) string {
+	musicName := C.BASS_ChannelGetTags(C.DWORD(ch), C.DWORD(flags))
+	return C.GoString(musicName)
+}
 
 
 func errMsg(c int) *Error {

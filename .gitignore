@@ -17,3 +17,5 @@ vendor/
 .idea/
 .vscode/
 .idea/*
+/gotune
+/GoTune.app/

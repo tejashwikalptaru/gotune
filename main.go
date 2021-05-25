@@ -30,13 +30,6 @@ func main() {
 			_ ,_ = player.Play()
 			return
 		}
-
-		err := player.MusicLoad("/Users/tejashwi/projects/personal/gotune/build/mktheme.it", bass.MusicRamps | bass.MusicPreScan | bass.MusicAutoFree)
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
-		_, _ = player.Play()
 	})
 	app.MuteFunc(func() {
 		mute := !player.IsMute()
@@ -46,8 +39,24 @@ func main() {
 	app.StopFunc(func() {
 		player.Stop()
 	})
-	player.ChannelLoadedCallBack(func(status bass.ChannelStatus, totalTime float64, channel int) {
+	app.SetFileOpenCallBack(func(filePath string) {
+		err := player.Load(filePath)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		_, _ = player.Play()
+	})
+	player.ChannelLoadedCallBack(func(status bass.ChannelStatus, totalTime float64, channel int64, metaInfo bass.MusicMetaInfo) {
 		app.SetTotalTime(totalTime)
+		if metaInfo.IsMOD {
+			app.SetSongName(metaInfo.ModInfo.Name)
+			return
+		}
+		app.SetSongName(metaInfo.SongInfo.Title())
+		if metaInfo.SongInfo.Picture() != nil {
+			app.SetAlbumArt(metaInfo.SongInfo.Picture().Data)
+		}
 	})
 	player.StatusCallBack(func(status bass.ChannelStatus, elapsed float64) {
 		if status == bass.ChannelStatusPlaying {

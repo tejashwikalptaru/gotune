@@ -17,6 +17,8 @@ import (
 	"path/filepath"
 )
 
+type FileOpenCallBack func(filePath string)
+
 type Main struct {
 	app    fyne.App
 	window fyne.Window
@@ -37,6 +39,9 @@ type Main struct {
 	albumArt *canvas.Image
 
 	fileSearchStatus utils.ScanStatus
+
+	// callbacks
+	fileOpenCallBack FileOpenCallBack
 }
 
 func NewMainWindow() *Main {
@@ -62,7 +67,7 @@ func (main *Main) createMainMenu() []*fyne.Menu {
 	separator := fyne.NewMenuItemSeparator()
 
 	openFile := fyne.NewMenuItem("Open", func() {
-		_, _ = utils.OpenFile("Select a file to play")
+		main.handleOpenFile()
 	})
 	openFolder := fyne.NewMenuItem("Open Folder", func() {
 		main.handleOpenFolder()
@@ -77,11 +82,6 @@ func (main *Main) createMainMenu() []*fyne.Menu {
 }
 
 func (main *Main) display() fyne.CanvasObject {
-	btn := widget.NewButton("Test", func() {})
-	btn.Resize(fyne.Size{
-		Width:  utils.WIDTH,
-		Height: utils.HEIGHT - 50,
-	})
 	main.albumArt = canvas.NewImageFromResource(res.ResourceLogoPng)
 	main.albumArt.FillMode = canvas.ImageFillContain
 	return main.albumArt
@@ -98,10 +98,10 @@ func (main *Main) controls() fyne.CanvasObject {
 	buttonsHolder := container.NewHBox(main.prevButton, main.playButton, main.stopButton, main.nextButton, main.muteButton, main.loopButton, main.songInfo)
 
 	main.progressSlider = widget.NewSlider(0, 100)
-	main.currentTime = widget.NewLabel("00:00:00")
-	main.endTime = widget.NewLabel("00:00:00")
+	main.currentTime = widget.NewLabel("00:00")
+	main.endTime = widget.NewLabel("00:00")
 
-	sliderHolder := container.NewGridWithColumns(4, main.currentTime, main.progressSlider, main.endTime)
+	sliderHolder := container.NewBorder(nil, nil, main.currentTime, main.endTime, main.progressSlider)
 
 	return container.NewVBox(buttonsHolder, sliderHolder)
 }
@@ -149,8 +149,9 @@ func (main *Main) SetAlbumArt(imgByte []byte) {
 		//fmt.Print(err)
 		return
 	}
+	main.albumArt.Resource = nil
 	main.albumArt.Image = img
-	main.albumArt.Refresh()
+	canvas.Refresh(main.albumArt)
 }
 
 func (main *Main) SetCurrentTime(timeElapsed float64) {
@@ -163,6 +164,10 @@ func (main *Main) SetTotalTime(endTime float64) {
 	format := fmt.Sprintf("%.2d:%.2d", int(endTime/60), int(math.Mod(endTime, 60)))
 	main.progressSlider.Max = endTime
 	main.endTime.SetText(format)
+}
+
+func (main *Main) SetSongName(name string) {
+	main.songInfo.SetText(name)
 }
 
 func (main *Main) AddShortCuts() {
@@ -203,4 +208,21 @@ func (main *Main) handleOpenFolder() {
 		}
 		fsw.Close()
 	}()
+}
+
+func (main *Main) SetFileOpenCallBack(f FileOpenCallBack) {
+	main.fileOpenCallBack = f
+}
+
+func (main *Main) handleOpenFile() {
+	path, err := utils.OpenFile("Select a file to play")
+	if err != nil {
+		fyne.LogError("failed to select file", err)
+		utils.ShowError(true, "Failed", err.Error())
+		return
+	}
+	if main.fileOpenCallBack == nil {
+		return
+	}
+	main.fileOpenCallBack(path)
 }

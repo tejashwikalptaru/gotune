@@ -6,13 +6,13 @@ import (
 )
 
 type StatusCallBack func(status ChannelStatus, elapsed float64)
-type ChannelLoadedCallBack func(status ChannelStatus, totalTime float64, channel int)
+type ChannelLoadedCallBack func(status ChannelStatus, totalTime float64, channel int64, metaInfo MusicMetaInfo)
 
 type Player struct {
-	initialized    bool
-	currentChannel int
-	currentVolume  float32
-	mute           bool
+	initialized         bool
+	currentChannel      int64
+	currentVolume       float32
+	mute                bool
 
 	killUpdateRoutine chan bool
 
@@ -31,7 +31,7 @@ func New(device, frequency int, flag InitFlags) (*Player, error) {
 		currentChannel:    0,
 		killUpdateRoutine: make(chan bool),
 		mute:              false,
-		currentVolume:     5,
+		currentVolume:     0,
 	}
 	player.updateRoutine()
 	return &player, nil
@@ -48,17 +48,30 @@ func (p *Player) Free() error {
 	return nil
 }
 
-func (p *Player) MusicLoad(path string, flags int) *Error {
+func (p *Player) Load(path string) *Error {
 	if !p.initialized {
 		return errMsg(8)
 	}
-	channel, err := musicLoad(path, flags)
+	isMOD := false
+	// try to load tracker modules
+	channel, err := musicLoad(path, musicPreScan|musicRamps|streamAutoFree)
+	if err != nil {
+		// then try to load audio files
+		channel, err = streamCreateFile(path, streamAutoFree)
+		if err != nil {
+			// give up!
+			return err
+		}
+	} else {
+		isMOD = true
+	}
 	p.currentChannel = channel
 	p.SetVolume(p.currentVolume)
 	if p.channelLoadedCallBack != nil {
 		status, _ := p.Status()
 		total := channelBytes2Seconds(p.currentChannel, channelLength(p.currentChannel))
-		p.channelLoadedCallBack(status, total, p.currentChannel)
+		meta := findMeta(p.currentChannel, isMOD, path)
+		p.channelLoadedCallBack(status, total, p.currentChannel, meta)
 	}
 	return err
 }
@@ -139,6 +152,7 @@ func (p *Player) ChannelLoadedCallBack(f ChannelLoadedCallBack) {
 
 func (p *Player) updateRoutine() {
 	go func() {
+		var elapsed float64
 		for {
 			select {
 			case <-p.killUpdateRoutine:
@@ -146,12 +160,14 @@ func (p *Player) updateRoutine() {
 				return
 			default:
 				status, _ := p.Status()
-				timeElapsed := channelBytes2Seconds(p.currentChannel, channelPosition(p.currentChannel))
+				if status == ChannelStatusPlaying {
+					elapsed = channelBytes2Seconds(p.currentChannel, channelPosition(p.currentChannel))
+				}
 				if p.statusCallBackFunc != nil {
-					p.statusCallBackFunc(status, timeElapsed)
+					p.statusCallBackFunc(status, elapsed)
 				}
 				// very important to give some rest to CPU
-				time.Sleep(time.Second / 2)
+				time.Sleep(time.Second / 3)
 			}
 		}
 	}()

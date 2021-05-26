@@ -7,15 +7,14 @@ package bass
 */
 import "C"
 
-const musicRamps int = C.BASS_MUSIC_RAMPS
-const musicPreScan int = C.BASS_MUSIC_PRESCAN
-const streamAutoFree int = C.BASS_STREAM_AUTOFREE
-const attribVol int = C.BASS_ATTRIB_VOL
-
 type Error struct {
 	Err  error
 	Code ErrorCode
 }
+
+const musicRamps int = C.BASS_MUSIC_RAMPS
+const musicPreScan int = C.BASS_MUSIC_PRESCAN
+const streamAutoFree int = C.BASS_STREAM_AUTOFREE
 
 type ChannelStatus int
 
@@ -87,20 +86,20 @@ const (
 type Tag int
 
 const (
-	TagID3           Tag = C.BASS_TAG_ID3           // ID3v1 tags : TAG_ID3 structure
-	TagID3V2         Tag = C.BASS_TAG_ID3V2         // ID3v2 tags : variable length block
-	TagOGG           Tag = C.BASS_TAG_OGG           // OGG comments : series of null-terminated UTF-8 strings
-	TagHTTP          Tag = C.BASS_TAG_HTTP          // HTTP headers : series of null-terminated ANSI strings
-	TagICY           Tag = C.BASS_TAG_ICY           // ICY headers : series of null-terminated ANSI strings
-	TagMETA          Tag = C.BASS_TAG_META          // ICY metadata : ANSI string
-	TagAPE           Tag = C.BASS_TAG_APE           // APE tags : series of null-terminated UTF-8 strings
-	TagMP4           Tag = C.BASS_TAG_MP4           // MP4/iTunes metadata : series of null-terminated UTF-8 strings
-	TagWMA           Tag = C.BASS_TAG_WMA           // WMA tags : series of null-terminated UTF-8 strings
-	TagVENDOR        Tag = C.BASS_TAG_VENDOR        // OGG encoder : UTF-8 string
-	TagLYRICS3       Tag = C.BASS_TAG_LYRICS3       // Lyric3v2 tag : ASCII string
+	TagID3          Tag = C.BASS_TAG_ID3           // ID3v1 tags : TAG_ID3 structure
+	TagID3V2        Tag = C.BASS_TAG_ID3V2         // ID3v2 tags : variable length block
+	TagOGG          Tag = C.BASS_TAG_OGG           // OGG comments : series of null-terminated UTF-8 strings
+	TagHTTP         Tag = C.BASS_TAG_HTTP          // HTTP headers : series of null-terminated ANSI strings
+	TagICY          Tag = C.BASS_TAG_ICY           // ICY headers : series of null-terminated ANSI strings
+	TagMETA         Tag = C.BASS_TAG_META          // ICY metadata : ANSI string
+	TagAPE          Tag = C.BASS_TAG_APE           // APE tags : series of null-terminated UTF-8 strings
+	TagMP4          Tag = C.BASS_TAG_MP4           // MP4/iTunes metadata : series of null-terminated UTF-8 strings
+	TagWMA          Tag = C.BASS_TAG_WMA           // WMA tags : series of null-terminated UTF-8 strings
+	TagVENDOR       Tag = C.BASS_TAG_VENDOR        // OGG encoder : UTF-8 string
+	TagLYRICS3      Tag = C.BASS_TAG_LYRICS3       // Lyric3v2 tag : ASCII string
 	TagCaCODEC      Tag = C.BASS_TAG_CA_CODEC      // CoreAudio codec info : TAG_CA_CODEC structure
-	TagMF            Tag = C.BASS_TAG_MF            // Media Foundation tags : series of null-terminated UTF-8 strings
-	TagWaveFORMAT    Tag = C.BASS_TAG_WAVEFORMAT    // WAVE format : WAVEFORMATEEX structure
+	TagMF           Tag = C.BASS_TAG_MF            // Media Foundation tags : series of null-terminated UTF-8 strings
+	TagWaveFORMAT   Tag = C.BASS_TAG_WAVEFORMAT    // WAVE format : WAVEFORMATEEX structure
 	TagRiffINFO     Tag = C.BASS_TAG_RIFF_INFO     // RIFF "INFO" tags : series of null-terminated ANSI strings
 	TagRiffBEXT     Tag = C.BASS_TAG_RIFF_BEXT     // RIFF/BWF "bext" tags : TAG_BEXT structure
 	TagRiffCART     Tag = C.BASS_TAG_RIFF_CART     // RIFF/BWF "cart" tags : TAG_CART structure
@@ -112,4 +111,33 @@ const (
 	TagMusicAUTH    Tag = C.BASS_TAG_MUSIC_AUTH    // MOD author : UTF-8 string
 	TagMusicINST    Tag = C.BASS_TAG_MUSIC_INST    // + instrument #, MOD instrument name : ANSI string
 	TagMusicSAMPLE  Tag = C.BASS_TAG_MUSIC_SAMPLE  // + sample #, MOD sample name : ANSI string
+)
+
+type ChannelAttributes int
+
+const (
+	ChannelAttribFREQ           ChannelAttributes = C.BASS_ATTRIB_FREQ
+	ChannelAttribVOL            ChannelAttributes = C.BASS_ATTRIB_VOL
+	ChannelAttribPAN            ChannelAttributes = C.BASS_ATTRIB_PAN
+	ChannelAttribEAXMIX         ChannelAttributes = C.BASS_ATTRIB_EAXMIX
+	ChannelAttribNOBUFFER       ChannelAttributes = C.BASS_ATTRIB_NOBUFFER
+	ChannelAttribVBR            ChannelAttributes = C.BASS_ATTRIB_VBR
+	ChannelAttribCPU            ChannelAttributes = C.BASS_ATTRIB_CPU
+	ChannelAttribSRC            ChannelAttributes = C.BASS_ATTRIB_SRC
+	ChannelAttribNetResume      ChannelAttributes = C.BASS_ATTRIB_NET_RESUME
+	ChannelAttribSCANINFO       ChannelAttributes = C.BASS_ATTRIB_SCANINFO
+	ChannelAttribNORAMP         ChannelAttributes = C.BASS_ATTRIB_NORAMP
+	ChannelAttribBITRATE        ChannelAttributes = C.BASS_ATTRIB_BITRATE
+	ChannelAttribBUFFER         ChannelAttributes = C.BASS_ATTRIB_BUFFER
+	ChannelAttribGRANULE        ChannelAttributes = C.BASS_ATTRIB_GRANULE
+	ChannelAttribMusicAmplify   ChannelAttributes = C.BASS_ATTRIB_MUSIC_AMPLIFY
+	ChannelAttribMusicPANSEP    ChannelAttributes = C.BASS_ATTRIB_MUSIC_PANSEP
+	ChannelAttribMusicPSCALER   ChannelAttributes = C.BASS_ATTRIB_MUSIC_PSCALER
+	ChannelAttribMusicBPM       ChannelAttributes = C.BASS_ATTRIB_MUSIC_BPM
+	ChannelAttribMusicSPEED     ChannelAttributes = C.BASS_ATTRIB_MUSIC_SPEED
+	ChannelAttribMusicVOLGLOBAL ChannelAttributes = C.BASS_ATTRIB_MUSIC_VOL_GLOBAL
+	ChannelAttribMusicACTIVE    ChannelAttributes = C.BASS_ATTRIB_MUSIC_ACTIVE
+	ChannelAttribMusicVOLCHAN   ChannelAttributes = C.BASS_ATTRIB_MUSIC_VOL_CHAN // + channel #
+	ChannelAttribMusicVOLINST   ChannelAttributes = C.BASS_ATTRIB_MUSIC_VOL_INST // + instrument #
+	ChannelAttribSLIDELOG       ChannelAttributes = C.BASS_SLIDE_LOG             // BASS_ChannelSlideAttribute flags
 )

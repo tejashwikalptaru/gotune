@@ -36,6 +36,13 @@ func musicLoad(file string, flags int) (int64, *Error) {
 	}
 }
 
+func musicFree(ch int64) bool {
+	if free := C.BASS_MusicFree(C.DWORD(ch)); free != 0 {
+		return true
+	}
+	return false
+}
+
 func streamCreateFile(file string, flags int) (int64, *Error) {
 	ch := C.BASS_StreamCreateFile(0, unsafe.Pointer(C.CString(file)), 0, 0, C.DWORD(flags))
 	if ch != 0 {
@@ -43,6 +50,13 @@ func streamCreateFile(file string, flags int) (int64, *Error) {
 	} else {
 		return 0, errMsg(int(C.BASS_ErrorGetCode()))
 	}
+}
+
+func streamFree(ch int64) bool {
+	if free := C.BASS_StreamFree(C.DWORD(ch)); free != 0 {
+		return true
+	}
+	return false
 }
 
 func channelPlay(ch int64, restart bool) (bool, *Error) {
@@ -82,7 +96,7 @@ func channelSetAttribute(ch int64, attrib int, value float32) (bool, *Error) {
 }
 
 func channelSetVolume(ch int64, value float32) (bool, *Error) {
-	return channelSetAttribute(ch, attribVol, value/100)
+	return channelSetAttribute(ch, C.BASS_ATTRIB_VOL, value/100)
 }
 
 func channelStatus(ch int64) ChannelStatus {
@@ -108,6 +122,13 @@ func channelBytes2Seconds(ch int64, pos float64) float64 {
 func channelGetMODTags(ch int64, flags Tag) string {
 	musicName := C.BASS_ChannelGetTags(C.DWORD(ch), C.DWORD(flags))
 	return C.GoString(musicName)
+}
+
+func channelSlideAttribute(ch int64, flags ChannelAttributes, value float32, time int) bool {
+	if done := C.BASS_ChannelSlideAttribute(C.DWORD(ch), C.DWORD(flags), C.float(value), C.DWORD(time)); done != 0 {
+		return true
+	}
+	return false
 }
 
 

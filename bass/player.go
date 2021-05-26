@@ -9,10 +9,10 @@ type StatusCallBack func(status ChannelStatus, elapsed float64)
 type ChannelLoadedCallBack func(status ChannelStatus, totalTime float64, channel int64, metaInfo MusicMetaInfo)
 
 type Player struct {
-	initialized         bool
-	currentChannel      int64
-	currentVolume       float32
-	mute                bool
+	initialized    bool
+	currentChannel int64
+	currentVolume  float32
+	mute           bool
 
 	killUpdateRoutine chan bool
 
@@ -31,7 +31,7 @@ func New(device, frequency int, flag InitFlags) (*Player, error) {
 		currentChannel:    0,
 		killUpdateRoutine: make(chan bool),
 		mute:              false,
-		currentVolume:     0,
+		currentVolume:     5,
 	}
 	player.updateRoutine()
 	return &player, nil
@@ -48,10 +48,18 @@ func (p *Player) Free() error {
 	return nil
 }
 
+func (p *Player) freeChannel() {
+	if !streamFree(p.currentChannel) {
+		musicFree(p.currentChannel)
+	}
+}
+
 func (p *Player) Load(path string) *Error {
 	if !p.initialized {
 		return errMsg(8)
 	}
+	p.Stop()
+
 	isMOD := false
 	// try to load tracker modules
 	channel, err := musicLoad(path, musicPreScan|musicRamps|streamAutoFree)
@@ -98,11 +106,16 @@ func (p *Player) Pause() (bool, *Error) {
 	return channelPause(p.currentChannel)
 }
 
-func (p *Player) Stop() (bool, *Error) {
+func (p *Player) Stop() *Error {
 	if !p.initialized {
-		return false, errMsg(8)
+		return errMsg(8)
 	}
-	return channelStop(p.currentChannel)
+	// graceful stop
+	channelSlideAttribute(p.currentChannel, ChannelAttribFREQ, 1000, 500)
+	channelSlideAttribute(p.currentChannel, ChannelAttribVOL|ChannelAttribSLIDELOG, -1, 100)
+	channelStop(p.currentChannel)
+	p.freeChannel()
+	return nil
 }
 
 func (p *Player) Status() (ChannelStatus, *Error) {

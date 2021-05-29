@@ -32,8 +32,8 @@ func main() {
 	})
 
 	app.SetPlayListUpdater(player.AddPlayListFile)
-	app.SetPlaylistGetter(func() []bass.MusicMetaInfo {
-		return player.GetPlayList()
+	app.ProgressChanged(func(val float64) {
+		player.SetChannelPosition(val)
 	})
 
 	app.PlayFunc(func() {
@@ -42,10 +42,7 @@ func main() {
 			_, _ = player.Pause()
 			return
 		}
-		if status == bass.ChannelStatusStalled || status == bass.ChannelStatusPaused {
-			_ ,_ = player.Play()
-			return
-		}
+		_ ,_ = player.Play()
 	})
 	app.MuteFunc(func() {
 		mute := !player.IsMute()

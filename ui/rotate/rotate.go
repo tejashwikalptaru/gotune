@@ -8,7 +8,7 @@ type Rotator struct {
 }
 
 func NewRotator(text string, maxLength int) *Rotator {
-	return &Rotator{text: fmt.Sprintf("%s", text), len: maxLength}
+	return &Rotator{text: fmt.Sprintf("    %s", text), len: maxLength}
 }
 
 func (r *Rotator) Rotate() string {

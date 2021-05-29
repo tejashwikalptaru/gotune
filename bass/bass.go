@@ -109,14 +109,23 @@ func channelLength(ch int64) float64 {
 	return float64(QWord)
 }
 
-func channelPosition(ch int64) float64 {
+func channelGetPosition(ch int64) float64 {
 	QWord := C.BASS_ChannelGetPosition(C.DWORD(ch), C.BASS_POS_BYTE)
 	return float64(QWord)
+}
+
+func channelSetPosition(ch int64, pos float64) {
+	C.BASS_ChannelSetPosition(C.DWORD(ch), C.QWORD(pos), C.BASS_POS_BYTE)
 }
 
 func channelBytes2Seconds(ch int64, pos float64) float64 {
 	seconds := C.BASS_ChannelBytes2Seconds(C.DWORD(ch), C.QWORD(pos))
 	return float64(seconds)
+}
+
+func channelSeconds2Bytes(ch int64, pos float64) float64 {
+	bytes := C.BASS_ChannelSeconds2Bytes(C.DWORD(ch), C.double(pos))
+	return float64(bytes)
 }
 
 func channelGetMODTags(ch int64, flags Tag) string {

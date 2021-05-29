@@ -106,7 +106,7 @@ func (p *Player) Play() (bool, *Error) {
 		return true, nil
 	}
 	if status == ChannelStatusStopped || status == ChannelStatusStalled {
-		return channelPlay(p.currentChannel, true)
+		channelPlay(p.currentChannel, true)
 	}
 	// it should be paused then, resume play
 	return channelPlay(p.currentChannel, false)
@@ -188,7 +188,7 @@ func (p *Player) updateRoutine() {
 			default:
 				status, _ := p.Status()
 				if status == ChannelStatusPlaying {
-					elapsed = channelBytes2Seconds(p.currentChannel, channelPosition(p.currentChannel))
+					elapsed = channelBytes2Seconds(p.currentChannel, channelGetPosition(p.currentChannel))
 				}
 				if p.statusCallBackFunc != nil {
 					p.statusCallBackFunc(status, elapsed, p.IsMute())
@@ -234,6 +234,14 @@ func (p *Player) PlayPrevious() {
 		p.Load(p.playlist[p.currentPlaylistIndex].Path)
 		p.Play()
 	}
+}
+
+func (p *Player) SetChannelPosition(val float64) {
+	if !p.initialized {
+		return
+	}
+	bytes := channelSeconds2Bytes(p.currentChannel, val)
+	channelSetPosition(p.currentChannel, bytes)
 }
 
 func (p *Player) AddPlayListFile(path string) {

@@ -10,7 +10,6 @@ import (
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/tejashwikalptaru/gotune/bass"
 	"github.com/tejashwikalptaru/gotune/res"
 	"github.com/tejashwikalptaru/gotune/ui/rotate"
 	"github.com/tejashwikalptaru/gotune/utils"
@@ -52,7 +51,6 @@ type Main struct {
 	rotator    *rotate.Rotator
 
 	addToPlayListFunc func(path string)
-	getPlaylist func () []bass.MusicMetaInfo
 }
 
 func NewMainWindow() *Main {
@@ -101,7 +99,7 @@ func (main *Main) createMainMenu() []*fyne.Menu {
 }
 
 func (main *Main) display() fyne.CanvasObject {
-	main.albumArt = canvas.NewImageFromResource(res.ResourceLogoPng)
+	main.albumArt = canvas.NewImageFromResource(res.ResourceMusicPng)
 	main.albumArt.FillMode = canvas.ImageFillContain
 	return main.albumArt
 }
@@ -187,13 +185,14 @@ func (main *Main) SetAlbumArt(imgByte []byte) {
 
 func (main *Main) ClearAlbumArt() {
 	main.albumArt.Image = nil
-	main.albumArt.Resource = res.ResourceLogoPng
+	main.albumArt.Resource = res.ResourceMusicPng
 	main.albumArt.Refresh()
 }
 
 func (main *Main) SetCurrentTime(timeElapsed float64) {
 	format := fmt.Sprintf("%.2d:%.2d", int(timeElapsed/60), int(math.Mod(timeElapsed, 60)))
-	main.progressSlider.SetValue(timeElapsed)
+	main.progressSlider.Value = timeElapsed
+	main.progressSlider.Refresh()
 	main.currentTime.SetText(format)
 }
 
@@ -243,10 +242,6 @@ func (main *Main) SetPlayListUpdater(f func(p string)) {
 	main.addToPlayListFunc = f
 }
 
-func (main *Main) SetPlaylistGetter(f func() []bass.MusicMetaInfo) {
-	main.getPlaylist = f
-}
-
 func (main *Main) handleOpenFolder() {
 	if main.fileSearchStatus == utils.ScanRunning {
 		utils.ShowError(true, "Please wait", "Scanning is already running, please wait for that to finish%s", "")
@@ -281,9 +276,6 @@ func (main *Main) handleOpenFolder() {
 				fsw.UpdateLabel(fmt.Sprintf("Found: %d items, processing: %d",  len(files), i+1))
 				fsw.progressParsing.SetValue(float64(i+1))
 				main.addToPlayListFunc(f)
-			}
-			if main.getPlaylist != nil {
-				NewPlayListView(main.app, main.getPlaylist(), 0).win.Show()
 			}
 		}
 		fsw.Close()
@@ -320,4 +312,8 @@ func (main *Main) OnNextClick(f func()) {
 
 func (main *Main) OnPrevClick(f func()) {
 	main.prevButton.OnTapped = f
+}
+
+func (main *Main) ProgressChanged(f func(val float64)) {
+	main.progressSlider.OnChanged = f
 }

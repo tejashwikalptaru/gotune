@@ -12,6 +12,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer func(player *bass.Player) {
+		player.SavePlayList()
 		err := player.Free()
 		if err != nil {
 			log.Fatal(err)
@@ -19,6 +20,21 @@ func main() {
 	}(player)
 
 	app := ui.NewMainWindow()
+	defer func(m *ui.Main) {
+		m.Free()
+	}(app)
+
+	player.OpenPlayList()
+	player.SetVolume(100)
+	app.SetVolume(100)
+	app.VolumeUpdateCallBack(func(vol float64) {
+		player.SetVolume(vol)
+	})
+
+	app.SetPlayListUpdater(player.AddPlayListFile)
+	app.SetPlaylistGetter(func() []bass.MusicMetaInfo {
+		return player.GetPlayList()
+	})
 
 	app.PlayFunc(func() {
 		status, _ := player.Status()
@@ -34,10 +50,15 @@ func main() {
 	app.MuteFunc(func() {
 		mute := !player.IsMute()
 		player.Mute(mute)
-		app.SetMuteState(mute)
 	})
 	app.StopFunc(func() {
 		player.Stop()
+	})
+	app.OnNextClick(func() {
+		player.PlayNext()
+	})
+	app.OnPrevClick(func() {
+		player.PlayPrevious()
 	})
 	app.SetFileOpenCallBack(func(filePath string) {
 		err := player.Load(filePath)
@@ -47,25 +68,24 @@ func main() {
 		}
 		_, _ = player.Play()
 	})
-	player.ChannelLoadedCallBack(func(status bass.ChannelStatus, totalTime float64, channel int64, metaInfo bass.MusicMetaInfo) {
+	player.ChannelLoadedCallBack(func(status bass.ChannelStatus, totalTime float64, channel int64, meta bass.MusicMetaInfo) {
 		app.SetTotalTime(totalTime)
-		if metaInfo.IsMOD {
-			app.SetSongName(metaInfo.ModInfo.Name)
+		app.SetSongName(meta.Info.Name)
+		if meta.IsMOD {
 			return
 		}
-		app.SetSongName(metaInfo.SongInfo.Title())
-		if metaInfo.SongInfo.Picture() != nil {
-			app.SetAlbumArt(metaInfo.SongInfo.Picture().Data)
+		if meta.AdditionalMeta != nil && meta.AdditionalMeta.Picture() != nil {
+			app.SetAlbumArt(meta.AdditionalMeta.Picture().Data)
+		} else {
+			app.ClearAlbumArt()
 		}
 	})
-	player.StatusCallBack(func(status bass.ChannelStatus, elapsed float64) {
+	player.StatusCallBack(func(status bass.ChannelStatus, elapsed float64, mute bool) {
+		app.SetMuteState(mute)
 		if status == bass.ChannelStatusPlaying {
 			app.SetPlayState(true)
 			app.SetCurrentTime(elapsed)
 			return
-		}
-		if status == bass.ChannelStatusStopped || status == bass.ChannelStatusStalled {
-			app.SetCurrentTime(0)
 		}
 		app.SetPlayState(false)
 	})

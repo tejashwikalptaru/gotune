@@ -12,7 +12,7 @@ import (
 const (
 	APPNAME string = "Go Tune"
 	HEIGHT float32 = 300
-	WIDTH float32 = 600
+	WIDTH float32 = 450
 )
 
 var supportedFormats = []string{
@@ -121,4 +121,16 @@ func OpenFolder(title string) (string, error) {
 func Notify(title, message string) *fyne.Notification {
 	//return beeep.Notify(title, message, "")
 	return fyne.NewNotification(title, message)
+}
+
+func IsMod(path string) bool {
+	var mod = []string{
+		".it",
+		".xm",
+		".s3m",
+		".mtm",
+		".mod",
+		".umx",
+	}
+	return Contains(mod, filepath.Ext(path))
 }

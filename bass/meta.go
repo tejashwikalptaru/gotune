@@ -2,48 +2,85 @@ package bass
 
 import (
 	"github.com/dhowden/tag"
+	"github.com/tejashwikalptaru/gotune/utils"
 	"log"
 	"os"
+	"path/filepath"
 )
 
-type ModData struct {
-	Name       string
-	Message    string
-	Author     string
-	Instrument string
+type BasicMeta struct {
+	Name       string `json:"name"`
+	Message    string `json:"message"`
+	Author     string `json:"author"`
+	Instrument string `json:"instrument"`
+	Album      string `json:"album"`
+	Artist     string `json:"artist"`
 }
 
 type MusicMetaInfo struct {
-	IsMOD bool
-	Path  string
-	ModInfo ModData
-	SongInfo tag.Metadata
+	IsMOD          bool         `json:"isMod"`
+	Path           string       `json:"path"`
+	Info           BasicMeta    `json:"modInfo"`
+	AdditionalMeta tag.Metadata `json:"-"`
+}
+
+func ParseFile(path string) MusicMetaInfo {
+	mod := utils.IsMod(path)
+	if mod {
+		channel, err := musicLoad(path, musicPreScan|musicRamps|streamAutoFree)
+		if err != nil {
+			return MusicMetaInfo{
+				IsMOD: true,
+				Path:  path,
+				Info: BasicMeta{
+					Name: filepath.Base(path),
+				},
+			}
+		}
+		meta := findMeta(channel, true, path)
+		musicFree(channel)
+		return meta
+	}
+	return findMeta(0, false, path)
 }
 
 func findMeta(ch int64, isMod bool, path string) MusicMetaInfo {
-	info := MusicMetaInfo{IsMOD: isMod, Path: path}
+	meta := MusicMetaInfo{IsMOD: isMod, Path: path}
 
 	if isMod {
-		modInfo := ModData{}
-		modInfo.Name = channelGetMODTags(ch, TagMusicNAME)
-		modInfo.Message = channelGetMODTags(ch, TagMusicMESSAGE)
-		modInfo.Author = channelGetMODTags(ch, TagMusicAUTH)
-		modInfo.Instrument = channelGetMODTags(ch, TagMusicINST)
-		info.ModInfo = modInfo
-		return info
+		meta.Info.Name = channelGetMODTags(ch, TagMusicNAME)
+		meta.Info.Message = channelGetMODTags(ch, TagMusicMESSAGE)
+		meta.Info.Author = channelGetMODTags(ch, TagMusicAUTH)
+		meta.Info.Instrument = channelGetMODTags(ch, TagMusicINST)
+		if meta.Info.Name == "" {
+			filepath.Base(path)
+		}
+		return meta
 	}
 	// get audio meta data
+	meta.Info.Name = filepath.Base(path)
 	currentFile, err := os.Open(path)
 	if err != nil {
 		log.Fatalln(err)
-		return info
+		return meta
 	}
+	defer func(currentFile *os.File) {
+		err := currentFile.Close()
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}(currentFile)
+
 	metadata, _ := tag.ReadFrom(currentFile)
-	info.SongInfo = metadata
-	err = currentFile.Close()
-	if err != nil {
-		log.Fatal(err)
-		return info
+	if metadata == nil {
+		return meta
 	}
-	return info
+	if metadata.Title() != "" {
+		meta.Info.Name = metadata.Title()
+	}
+	meta.Info.Album = metadata.Album()
+	meta.Info.Artist = metadata.Artist()
+	meta.Info.Message = metadata.Composer()
+	meta.AdditionalMeta = metadata
+	return meta
 }

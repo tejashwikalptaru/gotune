@@ -19,3 +19,4 @@ vendor/
 .idea/*
 /gotune
 /GoTune.app/
+*.gtp

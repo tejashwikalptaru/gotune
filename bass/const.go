@@ -2,7 +2,7 @@ package bass
 
 /*
 #cgo CFLAGS: -I/usr/include -I.
-#cgo darwin LDFLAGS: -L${SRCDIR}/../build -lbass
+#cgo darwin LDFLAGS: -L${SRCDIR}/../libs -lbass
 #include "bass.h"
 */
 import "C"

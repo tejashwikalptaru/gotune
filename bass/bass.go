@@ -2,7 +2,7 @@ package bass
 
 /*
 #cgo CFLAGS: -I/usr/include -I.
-#cgo darwin LDFLAGS: -L${SRCDIR}/../build -lbass
+#cgo darwin LDFLAGS: -L${SRCDIR}/../libs -lbass
 #include "bass.h"
 */
 import "C"
@@ -87,7 +87,7 @@ func channelStop(ch int64) (bool, *Error) {
 	}
 }
 
-func channelSetAttribute(ch int64, attrib int, value float32) (bool, *Error) {
+func channelSetAttribute(ch int64, attrib int, value float64) (bool, *Error) {
 	if C.BASS_ChannelSetAttribute(C.DWORD(ch), C.DWORD(attrib), C.float(value)) != 0 {
 		return true, nil
 	} else {
@@ -95,7 +95,7 @@ func channelSetAttribute(ch int64, attrib int, value float32) (bool, *Error) {
 	}
 }
 
-func channelSetVolume(ch int64, value float32) (bool, *Error) {
+func channelSetVolume(ch int64, value float64) (bool, *Error) {
 	return channelSetAttribute(ch, C.BASS_ATTRIB_VOL, value/100)
 }
 

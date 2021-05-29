@@ -10,11 +10,14 @@ import (
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/tejashwikalptaru/gotune/bass"
 	"github.com/tejashwikalptaru/gotune/res"
+	"github.com/tejashwikalptaru/gotune/ui/rotate"
 	"github.com/tejashwikalptaru/gotune/utils"
 	"image"
 	"math"
 	"path/filepath"
+	"time"
 )
 
 type FileOpenCallBack func(filePath string)
@@ -35,6 +38,7 @@ type Main struct {
 	endTime     *widget.Label
 
 	progressSlider *widget.Slider
+	volumeSlider   *widget.Slider
 
 	albumArt *canvas.Image
 
@@ -42,6 +46,13 @@ type Main struct {
 
 	// callbacks
 	fileOpenCallBack FileOpenCallBack
+
+	// rotator chan
+	killRotate chan bool
+	rotator    *rotate.Rotator
+
+	addToPlayListFunc func(path string)
+	getPlaylist func () []bass.MusicMetaInfo
 }
 
 func NewMainWindow() *Main {
@@ -49,17 +60,25 @@ func NewMainWindow() *Main {
 
 	a := app.New()
 	w := a.NewWindow(utils.APPNAME)
-	w.Resize(fyne.Size{
-		Width:  utils.WIDTH,
-		Height: utils.HEIGHT,
-	})
-	w.SetFixedSize(true)
 	splitContainer := container.NewBorder(nil, main.controls(), nil, nil, main.display())
 	w.SetContent(container.NewPadded(splitContainer))
 	w.SetMainMenu(fyne.NewMainMenu(main.createMainMenu()...))
 	main.app = a
 	main.window = w
+	w.Resize(fyne.Size{
+		Width:  utils.WIDTH,
+		Height: utils.HEIGHT,
+	})
+	w.SetFixedSize(true)
+
+	main.killRotate = make(chan bool, 1)
+	main.rotator = rotate.NewRotator(utils.APPNAME, 15)
+	main.scrollInfoRoutine()
 	return &main
+}
+
+func (main *Main) Free() {
+	main.killRotate <- true
 }
 
 func (main *Main) createMainMenu() []*fyne.Menu {
@@ -93,9 +112,21 @@ func (main *Main) controls() fyne.CanvasObject {
 	main.nextButton = widget.NewButtonWithIcon("", theme.MediaSkipNextIcon(), func() {})
 	main.muteButton = widget.NewButtonWithIcon("", theme.VolumeUpIcon(), func() {})
 	main.loopButton = widget.NewButtonWithIcon("", theme.MediaReplayIcon(), func() {})
-	main.songInfo = widget.NewLabel("Here goes the song name with the details of song in it")
+	main.songInfo = widget.NewLabel("")
+	main.songInfo.Wrapping = fyne.TextTruncate
+	main.songInfo.TextStyle = fyne.TextStyle{
+		Bold:      true,
+		Italic:    true,
+		Monospace: false,
+	}
+	main.volumeSlider = widget.NewSlider(0, 100)
+	main.volumeSlider.Orientation = widget.Horizontal
 
-	buttonsHolder := container.NewHBox(main.prevButton, main.playButton, main.stopButton, main.nextButton, main.muteButton, main.loopButton, main.songInfo)
+	volIcon := canvas.NewImageFromResource(theme.VolumeUpIcon())
+	volumeHolder := container.NewHBox(volIcon, main.volumeSlider)
+
+	buttonsHBox := container.NewHBox(main.prevButton, main.playButton, main.stopButton, main.nextButton, main.muteButton, main.loopButton)
+	buttonsHolder := container.NewBorder(nil, nil, buttonsHBox, volumeHolder, main.songInfo)
 
 	main.progressSlider = widget.NewSlider(0, 100)
 	main.currentTime = widget.NewLabel("00:00")
@@ -154,6 +185,12 @@ func (main *Main) SetAlbumArt(imgByte []byte) {
 	canvas.Refresh(main.albumArt)
 }
 
+func (main *Main) ClearAlbumArt() {
+	main.albumArt.Image = nil
+	main.albumArt.Resource = res.ResourceLogoPng
+	main.albumArt.Refresh()
+}
+
 func (main *Main) SetCurrentTime(timeElapsed float64) {
 	format := fmt.Sprintf("%.2d:%.2d", int(timeElapsed/60), int(math.Mod(timeElapsed, 60)))
 	main.progressSlider.SetValue(timeElapsed)
@@ -167,17 +204,47 @@ func (main *Main) SetTotalTime(endTime float64) {
 }
 
 func (main *Main) SetSongName(name string) {
-	main.songInfo.SetText(name)
+	main.rotator = rotate.NewRotator(name, 15)
+}
+
+func (main *Main) scrollInfoRoutine() {
+	go func() {
+		for {
+			select {
+			case <- main.killRotate:
+				close(main.killRotate)
+				return
+			default:
+				time.Sleep(time.Millisecond * 400)
+				main.songInfo.SetText(main.rotator.Rotate())
+			}
+		}
+	}()
 }
 
 func (main *Main) AddShortCuts() {
-	ctrlP := desktop.CustomShortcut{
-		KeyName:  fyne.KeyP,
-		Modifier: desktop.ControlModifier,
+	volUp := desktop.CustomShortcut{
+		KeyName:  fyne.KeyUp,
+		Modifier: desktop.AltModifier,
 	}
-	main.window.Canvas().AddShortcut(&ctrlP, func(shortcut fyne.Shortcut) {
-		utils.ShowInfo("Welcome", "Thank you for trying %s", utils.APPNAME)
+	main.window.Canvas().AddShortcut(&volUp, func(shortcut fyne.Shortcut) {
+		main.volumeSlider.SetValue(main.volumeSlider.Value + 1)
 	})
+	volDown := desktop.CustomShortcut{
+		KeyName:  fyne.KeyDown,
+		Modifier: desktop.AltModifier,
+	}
+	main.window.Canvas().AddShortcut(&volDown, func(shortcut fyne.Shortcut) {
+		main.volumeSlider.SetValue(main.volumeSlider.Value - 1)
+	})
+}
+
+func (main *Main) SetPlayListUpdater(f func(p string)) {
+	main.addToPlayListFunc = f
+}
+
+func (main *Main) SetPlaylistGetter(f func() []bass.MusicMetaInfo) {
+	main.getPlaylist = f
 }
 
 func (main *Main) handleOpenFolder() {
@@ -198,13 +265,26 @@ func (main *Main) handleOpenFolder() {
 		main.fileSearchStatus = utils.ScanStopped
 	})
 	go func() {
-		_, err := utils.ScanFolder(path, func(s string) {
+		files, err := utils.ScanFolder(path, func(s string) {
 			fsw.UpdateLabel(filepath.Base(s))
 		}, &main.fileSearchStatus)
 		if err != nil {
 			fyne.LogError("failed to scan for files in folder", err)
 			fsw.Close()
-			main.fileSearchStatus = utils.ScanStopped
+		}
+		if main.addToPlayListFunc != nil {
+			fsw.progress.Hide()
+			fsw.progressParsing.Min = 0
+			fsw.progressParsing.Max = float64(len(files))
+			fsw.progressParsing.Show()
+			for i, f := range files {
+				fsw.UpdateLabel(fmt.Sprintf("Found: %d items, processing: %d",  len(files), i+1))
+				fsw.progressParsing.SetValue(float64(i+1))
+				main.addToPlayListFunc(f)
+			}
+			if main.getPlaylist != nil {
+				NewPlayListView(main.app, main.getPlaylist(), 0).win.Show()
+			}
 		}
 		fsw.Close()
 	}()
@@ -218,11 +298,26 @@ func (main *Main) handleOpenFile() {
 	path, err := utils.OpenFile("Select a file to play")
 	if err != nil {
 		fyne.LogError("failed to select file", err)
-		utils.ShowError(true, "Failed", err.Error())
 		return
 	}
 	if main.fileOpenCallBack == nil {
 		return
 	}
 	main.fileOpenCallBack(path)
+}
+
+func (main *Main) SetVolume(vol float64) {
+	main.volumeSlider.Value = vol
+}
+
+func (main *Main) VolumeUpdateCallBack(f func(float64)) {
+	main.volumeSlider.OnChanged = f
+}
+
+func (main *Main) OnNextClick(f func()) {
+	main.nextButton.OnTapped = f
+}
+
+func (main *Main) OnPrevClick(f func()) {
+	main.prevButton.OnTapped = f
 }

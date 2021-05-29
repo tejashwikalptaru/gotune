@@ -1,17 +1,20 @@
 package bass
 
 import (
+	"encoding/json"
 	"github.com/pkg/errors"
+	"github.com/tejashwikalptaru/gotune/utils"
+	"io/ioutil"
 	"time"
 )
 
-type StatusCallBack func(status ChannelStatus, elapsed float64)
-type ChannelLoadedCallBack func(status ChannelStatus, totalTime float64, channel int64, metaInfo MusicMetaInfo)
+type StatusCallBack func(status ChannelStatus, elapsed float64, mute bool)
+type ChannelLoadedCallBack func(status ChannelStatus, totalTime float64, channel int64, meta MusicMetaInfo)
 
 type Player struct {
 	initialized    bool
 	currentChannel int64
-	currentVolume  float32
+	currentVolume  float64
 	mute           bool
 
 	killUpdateRoutine chan bool
@@ -19,6 +22,12 @@ type Player struct {
 	// callbacks
 	statusCallBackFunc    StatusCallBack
 	channelLoadedCallBack ChannelLoadedCallBack
+
+	// playlist files
+	playlist             []MusicMetaInfo
+	currentPlaylistIndex int
+
+	isManualStop bool
 }
 
 func New(device, frequency int, flag InitFlags) (*Player, error) {
@@ -29,9 +38,11 @@ func New(device, frequency int, flag InitFlags) (*Player, error) {
 	player := Player{
 		initialized:       init,
 		currentChannel:    0,
-		killUpdateRoutine: make(chan bool),
+		killUpdateRoutine: make(chan bool, 1),
 		mute:              false,
-		currentVolume:     5,
+		currentVolume:     0,
+		isManualStop:      true,
+		currentPlaylistIndex: -1,
 	}
 	player.updateRoutine()
 	return &player, nil
@@ -41,6 +52,7 @@ func (p *Player) Free() error {
 	if p.initialized {
 		p.initialized = false
 		p.killUpdateRoutine <- true
+		p.Stop()
 		if _, err := freeBass(); err != nil {
 			return errors.Wrapf(err.Err, "Failed to free lib bass with error: %+v", err)
 		}
@@ -88,6 +100,7 @@ func (p *Player) Play() (bool, *Error) {
 	if !p.initialized {
 		return false, errMsg(8)
 	}
+	p.isManualStop = false
 	status, _ := p.Status()
 	if status == ChannelStatusPlaying {
 		return true, nil
@@ -110,6 +123,7 @@ func (p *Player) Stop() *Error {
 	if !p.initialized {
 		return errMsg(8)
 	}
+	p.isManualStop = true
 	// graceful stop
 	channelSlideAttribute(p.currentChannel, ChannelAttribFREQ, 1000, 500)
 	channelSlideAttribute(p.currentChannel, ChannelAttribVOL|ChannelAttribSLIDELOG, -1, 100)
@@ -125,7 +139,7 @@ func (p *Player) Status() (ChannelStatus, *Error) {
 	return channelStatus(p.currentChannel), nil
 }
 
-func (p *Player) SetVolume(vol float32) *Error {
+func (p *Player) SetVolume(vol float64) *Error {
 	if !p.initialized {
 		return errMsg(8)
 	}
@@ -177,11 +191,86 @@ func (p *Player) updateRoutine() {
 					elapsed = channelBytes2Seconds(p.currentChannel, channelPosition(p.currentChannel))
 				}
 				if p.statusCallBackFunc != nil {
-					p.statusCallBackFunc(status, elapsed)
+					p.statusCallBackFunc(status, elapsed, p.IsMute())
+				}
+				if status == ChannelStatusStopped && !p.isManualStop && len(p.playlist) > 0 && p.currentPlaylistIndex < len(p.playlist) {
+					p.currentPlaylistIndex++
+					p.Stop()
+					p.Load(p.playlist[p.currentPlaylistIndex].Path)
+					p.Play()
 				}
 				// very important to give some rest to CPU
 				time.Sleep(time.Second / 3)
 			}
 		}
 	}()
+}
+
+func (p *Player) PlayNext() {
+	if !p.initialized {
+		return
+	}
+	if len(p.playlist) == 0 {
+		return
+	}
+	if p.currentPlaylistIndex < len(p.playlist) {
+		p.currentPlaylistIndex++
+		p.Stop()
+		p.Load(p.playlist[p.currentPlaylistIndex].Path)
+		p.Play()
+	}
+}
+
+func (p *Player) PlayPrevious() {
+	if !p.initialized {
+		return
+	}
+	if len(p.playlist) == 0 {
+		return
+	}
+	if p.currentPlaylistIndex > 0 {
+		p.currentPlaylistIndex--
+		p.Stop()
+		p.Load(p.playlist[p.currentPlaylistIndex].Path)
+		p.Play()
+	}
+}
+
+func (p *Player) AddPlayListFile(path string) {
+	p.playlist = append(p.playlist, ParseFile(path))
+}
+
+func (p *Player) GetPlayList() []MusicMetaInfo {
+	return p.playlist
+}
+
+func (p *Player) SavePlayList() {
+	if len(p.playlist) == 0 {
+		return
+	}
+	jsonByte, err := json.Marshal(p.playlist)
+	if err != nil {
+		utils.ShowError(true, "Failed", err.Error())
+		return
+	}
+	err = ioutil.WriteFile("/Users/tejashwi/projects/personal/gotune/playlist.gtp", jsonByte, 0644)
+	if err != nil {
+		utils.ShowError(true, "Failed", err.Error())
+	}
+}
+
+func (p *Player) OpenPlayList() {
+	file, err := ioutil.ReadFile("/Users/tejashwi/projects/personal/gotune/playlist.gtp")
+	if err != nil {
+		return
+	}
+	playlist := make([]MusicMetaInfo, 0)
+	err = json.Unmarshal(file, &playlist)
+	if err != nil {
+		return
+	}
+	if len(playlist) > 0 {
+		p.playlist = playlist
+		p.currentPlaylistIndex = -1 //reset
+	}
 }

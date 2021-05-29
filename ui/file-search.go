@@ -8,9 +8,10 @@ import (
 )
 
 type FileSearchWindow struct {
-	win      fyne.Window
-	progress *widget.ProgressBarInfinite
-	label    *widget.Label
+	win             fyne.Window
+	progress        *widget.ProgressBarInfinite
+	progressParsing *widget.ProgressBar
+	label           *widget.Label
 }
 
 func NewFileSearchWindow(app fyne.App) *FileSearchWindow {
@@ -24,9 +25,11 @@ func NewFileSearchWindow(app fyne.App) *FileSearchWindow {
 
 	fsw.progress = widget.NewProgressBarInfinite()
 	fsw.progress.Start()
+	fsw.progressParsing = widget.NewProgressBar()
+	fsw.progressParsing.Hide()
 	fsw.label = widget.NewLabel("Processing ....")
 
-	fsw.win.SetContent(container.NewVBox(fsw.label, fsw.progress))
+	fsw.win.SetContent(container.NewVBox(fsw.label, fsw.progress, fsw.progressParsing))
 	return &fsw
 }
 

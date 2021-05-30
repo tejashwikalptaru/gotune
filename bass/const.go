@@ -15,6 +15,9 @@ type Error struct {
 const musicRamps int = C.BASS_MUSIC_RAMPS
 const musicPreScan int = C.BASS_MUSIC_PRESCAN
 const streamAutoFree int = C.BASS_STREAM_AUTOFREE
+const streamGetData int = C.BASS_STREAM_DECODE
+const posReset int = C.BASS_MUSIC_POSRESET
+const posResetEx int = C.BASS_MUSIC_POSRESETEX
 
 type ChannelStatus int
 

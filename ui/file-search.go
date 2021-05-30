@@ -16,7 +16,7 @@ type FileSearchWindow struct {
 
 func NewFileSearchWindow(app fyne.App) *FileSearchWindow {
 	fsw := FileSearchWindow{}
-	fsw.win = app.NewWindow("Searching...")
+	fsw.win = app.NewWindow("Please wait")
 	fsw.win.Resize(fyne.Size{
 		Width:  utils.WIDTH - 100,
 		Height: utils.HEIGHT / 4,

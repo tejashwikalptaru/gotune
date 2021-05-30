@@ -25,38 +25,37 @@ type Main struct {
 	app    fyne.App
 	window fyne.Window
 
-	prevButton *widget.Button
-	playButton *widget.Button
-	stopButton *widget.Button
-	nextButton *widget.Button
-	muteButton *widget.Button
-	loopButton *widget.Button
-
-	songInfo    *widget.Label
-	currentTime *widget.Label
-	endTime     *widget.Label
-
+	prevButton     *widget.Button
+	playButton     *widget.Button
+	stopButton     *widget.Button
+	nextButton     *widget.Button
+	muteButton     *widget.Button
+	loopButton     *widget.Button
+	songInfo       *widget.Label
+	currentTime    *widget.Label
+	endTime        *widget.Label
 	progressSlider *widget.Slider
 	volumeSlider   *widget.Slider
+	albumArt       *canvas.Image
 
-	albumArt *canvas.Image
-
+	isDarkTheme      bool
 	fileSearchStatus utils.ScanStatus
+	changeListener   chan fyne.Settings
 
 	// callbacks
-	fileOpenCallBack FileOpenCallBack
+	fileOpenCallBack     FileOpenCallBack
+	addToPlayListFunc    func(path string)
+	openPlaylistCallBack func()
 
 	// rotator chan
 	killRotate chan bool
 	rotator    *rotate.Rotator
-
-	addToPlayListFunc func(path string)
 }
 
 func NewMainWindow() *Main {
 	var main Main
 
-	a := app.New()
+	a := app.NewWithID(utils.PACKAGE)
 	w := a.NewWindow(utils.APPNAME)
 	splitContainer := container.NewBorder(nil, main.controls(), nil, nil, main.display())
 	w.SetContent(container.NewPadded(splitContainer))
@@ -70,6 +69,7 @@ func NewMainWindow() *Main {
 	w.SetFixedSize(true)
 
 	main.killRotate = make(chan bool, 1)
+	main.changeListener = make(chan fyne.Settings, 1)
 	main.rotator = rotate.NewRotator(utils.APPNAME, 15)
 	main.scrollInfoRoutine()
 	return &main
@@ -77,6 +77,8 @@ func NewMainWindow() *Main {
 
 func (main *Main) Free() {
 	main.killRotate <- true
+	close(main.killRotate)
+	close(main.changeListener)
 }
 
 func (main *Main) createMainMenu() []*fyne.Menu {
@@ -89,11 +91,16 @@ func (main *Main) createMainMenu() []*fyne.Menu {
 	openFolder := fyne.NewMenuItem("Open Folder", func() {
 		main.handleOpenFolder()
 	})
+	viewPL := fyne.NewMenuItem("View Playlist", func() {
+		if main.openPlaylistCallBack != nil {
+			main.openPlaylistCallBack()
+		}
+	})
 	exitMenu := fyne.NewMenuItem("Exit", func() {
 		main.window.Close()
 	})
 
-	fileMenuItems := fyne.NewMenu("File", openFile, openFolder, separator, exitMenu)
+	fileMenuItems := fyne.NewMenu("File", openFile, openFolder, separator, viewPL, separator, exitMenu)
 	menus = append(menus, fileMenuItems)
 	return menus
 }
@@ -136,15 +143,37 @@ func (main *Main) controls() fyne.CanvasObject {
 }
 
 func (main *Main) ShowAndRun() {
+	main.app.SetIcon(res.ResourceIconPng)
+	if main.app.Settings().ThemeVariant() == 0 {
+		main.isDarkTheme = true
+	} else {
+		main.isDarkTheme = false
+	}
+
+	go func() {
+		for {
+			settings := <- main.changeListener
+			if settings == nil {
+				return
+			}
+			if settings.ThemeVariant() == 0 {
+				main.isDarkTheme = true
+				main.loopButton.SetIcon(res.ResourceRepeatLightPng)
+			} else {
+				main.isDarkTheme = false
+				main.loopButton.SetIcon(res.ResourceRepeatDarkPng)
+			}
+		}
+	}()
+	main.app.Settings().AddChangeListener(main.changeListener)
 	main.window.ShowAndRun()
 }
 
-func (main *Main) ShowNotification() {
-	notification := utils.Notify("Welcome", "Thank you for trying GoTune")
-	main.app.SendNotification(notification)
+func (main *Main) ShowNotification(title, message string) {
+	main.app.SendNotification(fyne.NewNotification(title, message))
 }
 
-func (main *Main) MuteFunc(f func()) {
+func (main *Main) OnMute(f func()) {
 	main.muteButton.OnTapped = f
 }
 
@@ -156,11 +185,26 @@ func (main *Main) SetMuteState(mute bool) {
 	}
 }
 
-func (main *Main) PlayFunc(f func()) {
+func (main *Main) SetLoopState(loop bool) {
+	var icon *fyne.StaticResource
+	if main.isDarkTheme {
+		icon = res.ResourceRepeatLightPng
+	} else {
+		icon = res.ResourceRepeatDarkPng
+	}
+
+	if loop {
+		main.loopButton.SetIcon(icon)
+	} else {
+		main.loopButton.SetIcon(theme.MediaReplayIcon())
+	}
+}
+
+func (main *Main) OnPlay(f func()) {
 	main.playButton.OnTapped = f
 }
 
-func (main *Main) StopFunc(f func()) {
+func (main *Main) OnStop(f func()) {
 	main.stopButton.OnTapped = f
 }
 
@@ -210,8 +254,7 @@ func (main *Main) scrollInfoRoutine() {
 	go func() {
 		for {
 			select {
-			case <- main.killRotate:
-				close(main.killRotate)
+			case <-main.killRotate:
 				return
 			default:
 				time.Sleep(time.Millisecond * 400)
@@ -255,10 +298,10 @@ func (main *Main) handleOpenFolder() {
 		return
 	}
 	fsw := NewFileSearchWindow(main.app)
-	fsw.Show()
 	fsw.OnClosed(func() {
 		main.fileSearchStatus = utils.ScanStopped
 	})
+	fsw.Show()
 	go func() {
 		files, err := utils.ScanFolder(path, func(s string) {
 			fsw.UpdateLabel(filepath.Base(s))
@@ -273,13 +316,17 @@ func (main *Main) handleOpenFolder() {
 			fsw.progressParsing.Max = float64(len(files))
 			fsw.progressParsing.Show()
 			for i, f := range files {
-				fsw.UpdateLabel(fmt.Sprintf("Found: %d items, processing: %d",  len(files), i+1))
-				fsw.progressParsing.SetValue(float64(i+1))
+				fsw.UpdateLabel(fmt.Sprintf("Found: %d items, processing: %d", len(files), i+1))
+				fsw.progressParsing.SetValue(float64(i + 1))
 				main.addToPlayListFunc(f)
 			}
 		}
 		fsw.Close()
 	}()
+}
+
+func (main *Main) SetOpenPlayListCallBack(f func()) {
+	main.openPlaylistCallBack = f
 }
 
 func (main *Main) SetFileOpenCallBack(f FileOpenCallBack) {
@@ -306,14 +353,38 @@ func (main *Main) VolumeUpdateCallBack(f func(float64)) {
 	main.volumeSlider.OnChanged = f
 }
 
-func (main *Main) OnNextClick(f func()) {
+func (main *Main) OnNext(f func()) {
 	main.nextButton.OnTapped = f
 }
 
-func (main *Main) OnPrevClick(f func()) {
+func (main *Main) OnPrev(f func()) {
 	main.prevButton.OnTapped = f
 }
 
 func (main *Main) ProgressChanged(f func(val float64)) {
 	main.progressSlider.OnChanged = f
+}
+
+func (main *Main) GetApp() fyne.App {
+	return main.app
+}
+
+func (main *Main) OnAppClose(f func()) {
+	main.window.SetOnClosed(f)
+}
+
+func (main *Main) QuitApp() {
+	main.app.Quit()
+}
+
+func (main *Main) OnLoop(f func()) {
+	main.loopButton.OnTapped = f
+}
+
+func (main *Main) SaveHistory(data string) {
+	main.app.Preferences().SetString(utils.HISTORY, data)
+}
+
+func (main *Main) GetHistory() string {
+	return main.app.Preferences().String(utils.HISTORY)
 }

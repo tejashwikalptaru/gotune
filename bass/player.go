@@ -9,25 +9,25 @@ import (
 )
 
 type StatusCallBack func(status ChannelStatus, elapsed float64, mute bool)
-type ChannelLoadedCallBack func(status ChannelStatus, totalTime float64, channel int64, meta MusicMetaInfo)
+type ChannelLoadedCallBack func(status ChannelStatus, totalTime float64, channel int64, meta MusicMetaInfo, queueIndex int)
 
 type Player struct {
-	initialized    bool
-	currentChannel int64
-	currentVolume  float64
-	mute           bool
-
+	initialized       bool
+	currentChannel    int64
+	currentVolume     float64
+	mute              bool
 	killUpdateRoutine chan bool
+	isManualStop      bool
+	loop              bool
 
 	// callbacks
 	statusCallBackFunc    StatusCallBack
 	channelLoadedCallBack ChannelLoadedCallBack
+	newFileAdded          func(info MusicMetaInfo)
 
-	// playlist files
-	playlist             []MusicMetaInfo
-	currentPlaylistIndex int
-
-	isManualStop bool
+	// queue files
+	queue             []MusicMetaInfo
+	currentQueueIndex int
 }
 
 func New(device, frequency int, flag InitFlags) (*Player, error) {
@@ -42,7 +42,7 @@ func New(device, frequency int, flag InitFlags) (*Player, error) {
 		mute:              false,
 		currentVolume:     0,
 		isManualStop:      true,
-		currentPlaylistIndex: -1,
+		currentQueueIndex: -1,
 	}
 	player.updateRoutine()
 	return &player, nil
@@ -60,13 +60,56 @@ func (p *Player) Free() error {
 	return nil
 }
 
-func (p *Player) freeChannel() {
-	if !streamFree(p.currentChannel) {
-		musicFree(p.currentChannel)
-	}
+func (p *Player) StatusCallBack(f StatusCallBack) {
+	p.statusCallBackFunc = f
 }
 
-func (p *Player) Load(path string) *Error {
+func (p *Player) ChannelLoadedCallBack(f ChannelLoadedCallBack) {
+	p.channelLoadedCallBack = f
+}
+
+func (p *Player) FileAddedCallBack(f func(info MusicMetaInfo)) {
+	p.newFileAdded = f
+}
+
+func (p *Player) AddToQueue(path string, play bool) *Error {
+	if !p.initialized {
+		return errMsg(8)
+	}
+	meta := ParseFile(path)
+	p.queue = append(p.queue, meta)
+	if play {
+		p.currentQueueIndex = len(p.queue) - 1
+		p.loadFromPath(path)
+		p.Play()
+	}
+	if p.newFileAdded != nil {
+		p.newFileAdded(meta)
+	}
+	return nil
+}
+
+func (p *Player) PlayFromQueue(path string) int {
+	if !p.initialized {
+		return -1
+	}
+	indexFound := -1
+	for i, v := range p.queue {
+		if v.Path == path {
+			indexFound = i
+			break
+		}
+	}
+	if indexFound == -1 {
+		return indexFound
+	}
+	p.currentQueueIndex = indexFound
+	p.loadFromPath(path)
+	p.Play()
+	return indexFound
+}
+
+func (p *Player) loadFromPath(path string) *Error {
 	if !p.initialized {
 		return errMsg(8)
 	}
@@ -74,10 +117,10 @@ func (p *Player) Load(path string) *Error {
 
 	isMOD := false
 	// try to load tracker modules
-	channel, err := musicLoad(path, musicPreScan|musicRamps|streamAutoFree)
+	channel, err := musicLoad(path, musicPreScan|musicRamps|streamAutoFree|posReset|posResetEx)
 	if err != nil {
 		// then try to load audio files
-		channel, err = streamCreateFile(path, streamAutoFree)
+		channel, err = streamCreateFile(path, streamAutoFree|posReset|posResetEx)
 		if err != nil {
 			// give up!
 			return err
@@ -91,7 +134,7 @@ func (p *Player) Load(path string) *Error {
 		status, _ := p.Status()
 		total := channelBytes2Seconds(p.currentChannel, channelLength(p.currentChannel))
 		meta := findMeta(p.currentChannel, isMOD, path)
-		p.channelLoadedCallBack(status, total, p.currentChannel, meta)
+		p.channelLoadedCallBack(status, total, p.currentChannel, meta, p.currentQueueIndex)
 	}
 	return err
 }
@@ -124,11 +167,12 @@ func (p *Player) Stop() *Error {
 		return errMsg(8)
 	}
 	p.isManualStop = true
-	// graceful stop
 	channelSlideAttribute(p.currentChannel, ChannelAttribFREQ, 1000, 500)
 	channelSlideAttribute(p.currentChannel, ChannelAttribVOL|ChannelAttribSLIDELOG, -1, 100)
 	channelStop(p.currentChannel)
-	p.freeChannel()
+	if !streamFree(p.currentChannel) {
+		musicFree(p.currentChannel)
+	}
 	return nil
 }
 
@@ -169,12 +213,12 @@ func (p *Player) IsMute() bool {
 	return p.mute
 }
 
-func (p *Player) StatusCallBack(f StatusCallBack) {
-	p.statusCallBackFunc = f
+func (p *Player) IsLoop() bool {
+	return p.loop
 }
 
-func (p *Player) ChannelLoadedCallBack(f ChannelLoadedCallBack) {
-	p.channelLoadedCallBack = f
+func (p *Player) Loop(enable bool) {
+	p.loop = enable
 }
 
 func (p *Player) updateRoutine() {
@@ -193,11 +237,13 @@ func (p *Player) updateRoutine() {
 				if p.statusCallBackFunc != nil {
 					p.statusCallBackFunc(status, elapsed, p.IsMute())
 				}
-				if status == ChannelStatusStopped && !p.isManualStop && len(p.playlist) > 0 && p.currentPlaylistIndex < len(p.playlist) {
-					p.currentPlaylistIndex++
-					p.Stop()
-					p.Load(p.playlist[p.currentPlaylistIndex].Path)
-					p.Play()
+				if status == ChannelStatusStopped && !p.isManualStop && len(p.queue) > 0 && p.currentQueueIndex < len(p.queue)-1 {
+					if p.loop {
+						p.loadFromPath(p.queue[p.currentQueueIndex].Path)
+						p.Play()
+					} else {
+						p.PlayNext()
+					}
 				}
 				// very important to give some rest to CPU
 				time.Sleep(time.Second / 3)
@@ -210,13 +256,12 @@ func (p *Player) PlayNext() {
 	if !p.initialized {
 		return
 	}
-	if len(p.playlist) == 0 {
+	if len(p.queue) == 0 {
 		return
 	}
-	if p.currentPlaylistIndex < len(p.playlist) {
-		p.currentPlaylistIndex++
-		p.Stop()
-		p.Load(p.playlist[p.currentPlaylistIndex].Path)
+	if p.currentQueueIndex < len(p.queue)-1 {
+		p.currentQueueIndex++
+		p.loadFromPath(p.queue[p.currentQueueIndex].Path)
 		p.Play()
 	}
 }
@@ -225,13 +270,12 @@ func (p *Player) PlayPrevious() {
 	if !p.initialized {
 		return
 	}
-	if len(p.playlist) == 0 {
+	if len(p.queue) == 0 {
 		return
 	}
-	if p.currentPlaylistIndex > 0 {
-		p.currentPlaylistIndex--
-		p.Stop()
-		p.Load(p.playlist[p.currentPlaylistIndex].Path)
+	if p.currentQueueIndex > 0 {
+		p.currentQueueIndex--
+		p.loadFromPath(p.queue[p.currentQueueIndex].Path)
 		p.Play()
 	}
 }
@@ -244,31 +288,52 @@ func (p *Player) SetChannelPosition(val float64) {
 	channelSetPosition(p.currentChannel, bytes)
 }
 
-func (p *Player) AddPlayListFile(path string) {
-	p.playlist = append(p.playlist, ParseFile(path))
-}
-
 func (p *Player) GetPlayList() []MusicMetaInfo {
-	return p.playlist
+	return p.queue
 }
 
-func (p *Player) SavePlayList() {
-	if len(p.playlist) == 0 {
+func (p *Player) GetPlaylistIndex() int {
+	return p.currentQueueIndex
+}
+
+func (p *Player) GetHistory() string {
+	jsonByte, err := json.Marshal(p.queue)
+	if err != nil {
+		utils.ShowError(true, "Failed", err.Error())
+		return ""
+	}
+	return string(jsonByte)
+}
+
+func (p *Player) LoadHistory(data string) {
+	playlist := make([]MusicMetaInfo, 0)
+	err := json.Unmarshal([]byte(data), &playlist)
+	if err != nil {
 		return
 	}
-	jsonByte, err := json.Marshal(p.playlist)
+	if len(playlist) > 0 {
+		p.queue = playlist
+		p.currentQueueIndex = -1 //reset
+	}
+}
+
+func (p *Player) WriteToPlaylist() {
+	if len(p.queue) == 0 {
+		return
+	}
+	jsonByte, err := json.Marshal(p.queue)
 	if err != nil {
 		utils.ShowError(true, "Failed", err.Error())
 		return
 	}
-	err = ioutil.WriteFile("/Users/tejashwi/projects/personal/gotune/playlist.gtp", jsonByte, 0644)
+	err = ioutil.WriteFile("/Users/tejashwi/projects/personal/gotune/queue.gtp", jsonByte, 0644)
 	if err != nil {
 		utils.ShowError(true, "Failed", err.Error())
 	}
 }
 
-func (p *Player) OpenPlayList() {
-	file, err := ioutil.ReadFile("/Users/tejashwi/projects/personal/gotune/playlist.gtp")
+func (p *Player) OpenPlayList(clearQueue bool) {
+	file, err := ioutil.ReadFile("/Users/tejashwi/projects/personal/gotune/queue.gtp")
 	if err != nil {
 		return
 	}
@@ -278,7 +343,7 @@ func (p *Player) OpenPlayList() {
 		return
 	}
 	if len(playlist) > 0 {
-		p.playlist = playlist
-		p.currentPlaylistIndex = -1 //reset
+		p.queue = playlist
+		p.currentQueueIndex = -1 //reset
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type BasicMeta struct {
@@ -27,7 +28,7 @@ type MusicMetaInfo struct {
 func ParseFile(path string) MusicMetaInfo {
 	mod := utils.IsMod(path)
 	if mod {
-		channel, err := musicLoad(path, musicPreScan|musicRamps|streamAutoFree)
+		channel, err := musicLoad(path, streamGetData|streamAutoFree)
 		if err != nil {
 			return MusicMetaInfo{
 				IsMOD: true,
@@ -48,12 +49,12 @@ func findMeta(ch int64, isMod bool, path string) MusicMetaInfo {
 	meta := MusicMetaInfo{IsMOD: isMod, Path: path}
 
 	if isMod {
-		meta.Info.Name = channelGetMODTags(ch, TagMusicNAME)
-		meta.Info.Message = channelGetMODTags(ch, TagMusicMESSAGE)
-		meta.Info.Author = channelGetMODTags(ch, TagMusicAUTH)
-		meta.Info.Instrument = channelGetMODTags(ch, TagMusicINST)
+		meta.Info.Name = strings.TrimSpace(channelGetMODTags(ch, TagMusicNAME))
+		meta.Info.Message = strings.TrimSpace(channelGetMODTags(ch, TagMusicMESSAGE))
+		meta.Info.Author = strings.TrimSpace(channelGetMODTags(ch, TagMusicAUTH))
+		meta.Info.Instrument = strings.TrimSpace(channelGetMODTags(ch, TagMusicINST))
 		if meta.Info.Name == "" {
-			filepath.Base(path)
+			meta.Info.Name = filepath.Base(path)
 		}
 		return meta
 	}
@@ -75,12 +76,12 @@ func findMeta(ch int64, isMod bool, path string) MusicMetaInfo {
 	if metadata == nil {
 		return meta
 	}
-	if metadata.Title() != "" {
-		meta.Info.Name = metadata.Title()
+	if strings.TrimSpace(metadata.Title()) != "" {
+		meta.Info.Name = strings.TrimSpace(metadata.Title())
 	}
-	meta.Info.Album = metadata.Album()
-	meta.Info.Artist = metadata.Artist()
-	meta.Info.Message = metadata.Composer()
+	meta.Info.Album = strings.TrimSpace(metadata.Album())
+	meta.Info.Artist = strings.TrimSpace(metadata.Artist())
+	meta.Info.Message = strings.TrimSpace(metadata.Composer())
 	meta.AdditionalMeta = metadata
 	return meta
 }

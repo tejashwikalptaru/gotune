@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"fyne.io/fyne/v2"
 	"github.com/sqweek/dialog"
 	"os"
 	"path/filepath"
@@ -11,8 +10,10 @@ import (
 
 const (
 	APPNAME string = "Go Tune"
+	HISTORY string = "Go Tune History"
 	HEIGHT float32 = 300
 	WIDTH float32 = 450
+	PACKAGE string = "com.tejashwi.gotune.preferences"
 )
 
 var supportedFormats = []string{
@@ -82,7 +83,7 @@ func ScanFolder(folderPath string, callback ScanFolderCallBack, status *ScanStat
 
 func Contains(arr []string, input string) bool {
 	for _, v := range arr {
-		if v == input {
+		if strings.EqualFold(v, input) {
 			return true
 		}
 	}
@@ -116,11 +117,6 @@ func OpenFile(title string) (string, error) {
 
 func OpenFolder(title string) (string, error) {
 	return dialog.Directory().Title(title).Browse()
-}
-
-func Notify(title, message string) *fyne.Notification {
-	//return beeep.Notify(title, message, "")
-	return fyne.NewNotification(title, message)
 }
 
 func IsMod(path string) bool {

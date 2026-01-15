@@ -1,0 +1,66 @@
+version: "2"
+linters:
+  enable:
+    - dupl
+    - gocritic
+    - gocyclo
+    - misspell
+    - revive
+    - unparam
+    - govet
+    - staticcheck
+    - ineffassign
+    - errcheck
+    - unused
+  settings:
+    dupl:
+      threshold: 100
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    gocyclo:
+      min-complexity: 25
+    revive:
+      severity: warning
+      rules:
+        - name: exported
+          arguments:
+            - checkPrivateReceivers
+          disabled: false
+        - name: var-naming
+          arguments:
+            - - ID
+              - URL
+              - OTEL
+              - OTLP
+              - GIN
+              - DB
+    unparam:
+      check-exported: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - internal/repo/db/dbsqlc
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  disable:
+    - gofumpt
+#  exclusions:
+#    generated: lax
+#    paths:
+#      - third_party$
+#      - builtin$
+#      - examples$

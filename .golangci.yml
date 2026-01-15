@@ -12,6 +12,8 @@ linters:
     - ineffassign
     - errcheck
     - unused
+    - gosec
+    - iface
   settings:
     dupl:
       threshold: 100

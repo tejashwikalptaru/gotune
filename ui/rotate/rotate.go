@@ -4,7 +4,7 @@ import "fmt"
 
 type Rotator struct {
 	text string
-	len int
+	len  int
 }
 
 func NewRotator(text string, maxLength int) *Rotator {

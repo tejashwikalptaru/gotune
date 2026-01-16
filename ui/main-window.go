@@ -3,6 +3,11 @@ package ui
 import (
 	"bytes"
 	"fmt"
+	"image"
+	"math"
+	"path/filepath"
+	"time"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -13,10 +18,6 @@ import (
 	"github.com/tejashwikalptaru/gotune/res"
 	"github.com/tejashwikalptaru/gotune/ui/rotate"
 	"github.com/tejashwikalptaru/gotune/utils"
-	"image"
-	"math"
-	"path/filepath"
-	"time"
 )
 
 type FileOpenCallBack func(filePath string)
@@ -152,7 +153,7 @@ func (main *Main) ShowAndRun() {
 
 	go func() {
 		for {
-			settings := <- main.changeListener
+			settings := <-main.changeListener
 			if settings == nil {
 				return
 			}
@@ -219,7 +220,7 @@ func (main *Main) SetPlayState(playing bool) {
 func (main *Main) SetAlbumArt(imgByte []byte) {
 	img, _, err := image.Decode(bytes.NewReader(imgByte))
 	if err != nil {
-		//fmt.Print(err)
+		// fmt.Print(err)
 		return
 	}
 	main.albumArt.Resource = nil

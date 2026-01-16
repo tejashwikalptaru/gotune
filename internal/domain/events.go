@@ -28,6 +28,8 @@ const (
 	EventTrackStopped   EventType = "track.stopped"
 	EventTrackCompleted EventType = "track.completed"
 	EventTrackProgress  EventType = "track.progress"
+	EventTrackError     EventType = "track.error"
+	EventAutoNext       EventType = "track.auto_next"
 
 	// Volume events
 	EventVolumeChanged EventType = "volume.changed"
@@ -447,5 +449,48 @@ func (e ApplicationStoppingEvent) Type() EventType {
 func NewApplicationStoppingEvent() ApplicationStoppingEvent {
 	return ApplicationStoppingEvent{
 		baseEvent: newBaseEvent(),
+	}
+}
+
+// TrackErrorEvent is published when an error occurs with a track.
+type TrackErrorEvent struct {
+	baseEvent
+	Track MusicTrack
+	Error error
+}
+
+// Type returns the event type.
+func (e TrackErrorEvent) Type() EventType {
+	return EventTrackError
+}
+
+// NewTrackErrorEvent creates a new TrackErrorEvent.
+func NewTrackErrorEvent(track MusicTrack, err error) TrackErrorEvent {
+	return TrackErrorEvent{
+		baseEvent: newBaseEvent(),
+		Track:     track,
+		Error:     err,
+	}
+}
+
+// AutoNextEvent is published when a track finishes and the playlist should auto-advance.
+// This is used by the PlaybackService to signal the PlaylistService.
+type AutoNextEvent struct {
+	baseEvent
+	Track        MusicTrack
+	CurrentIndex int
+}
+
+// Type returns the event type.
+func (e AutoNextEvent) Type() EventType {
+	return EventAutoNext
+}
+
+// NewAutoNextEvent creates a new AutoNextEvent.
+func NewAutoNextEvent(track MusicTrack, index int) AutoNextEvent {
+	return AutoNextEvent{
+		baseEvent:    newBaseEvent(),
+		Track:        track,
+		CurrentIndex: index,
 	}
 }

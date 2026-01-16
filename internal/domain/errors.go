@@ -18,6 +18,15 @@ var (
 	// ErrPlaylistEmpty is returned when an operation requires a non-empty playlist.
 	ErrPlaylistEmpty = errors.New("playlist is empty")
 
+	// ErrQueueEmpty is returned when queue operations are attempted on an empty queue.
+	ErrQueueEmpty = errors.New("queue is empty")
+
+	// ErrEndOfQueue is returned when trying to navigate past the end of the queue.
+	ErrEndOfQueue = errors.New("end of queue reached")
+
+	// ErrStartOfQueue is returned when trying to navigate before the start of the queue.
+	ErrStartOfQueue = errors.New("start of queue reached")
+
 	// ErrInvalidIndex is returned when a queue index is out of bounds.
 	ErrInvalidIndex = errors.New("invalid queue index")
 

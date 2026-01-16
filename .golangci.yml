@@ -47,7 +47,7 @@ linters:
       - legacy
       - std-error-handling
     paths:
-      - internal/repo/db/dbsqlc
+      - res
       - third_party$
       - builtin$
       - examples$
@@ -60,9 +60,3 @@ formatters:
     - goimports
   disable:
     - gofumpt
-#  exclusions:
-#    generated: lax
-#    paths:
-#      - third_party$
-#      - builtin$
-#      - examples$

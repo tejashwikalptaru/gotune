@@ -2,10 +2,11 @@ package bass
 
 import (
 	"encoding/json"
+	"os"
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/tejashwikalptaru/gotune/utils"
-	"io/ioutil"
-	"time"
 )
 
 type StatusCallBack func(status ChannelStatus, elapsed float64, mute bool)
@@ -313,7 +314,7 @@ func (p *Player) LoadHistory(data string) {
 	}
 	if len(playlist) > 0 {
 		p.queue = playlist
-		p.currentQueueIndex = -1 //reset
+		p.currentQueueIndex = -1 // reset
 	}
 }
 
@@ -326,14 +327,14 @@ func (p *Player) WriteToPlaylist() {
 		utils.ShowError(true, "Failed", err.Error())
 		return
 	}
-	err = ioutil.WriteFile("/Users/tejashwi/projects/personal/gotune/queue.gtp", jsonByte, 0644)
+	err = os.WriteFile("/Users/tejashwi/projects/personal/gotune/queue.gtp", jsonByte, 0600)
 	if err != nil {
 		utils.ShowError(true, "Failed", err.Error())
 	}
 }
 
 func (p *Player) OpenPlayList(clearQueue bool) {
-	file, err := ioutil.ReadFile("/Users/tejashwi/projects/personal/gotune/queue.gtp")
+	file, err := os.ReadFile("/Users/tejashwi/projects/personal/gotune/queue.gtp")
 	if err != nil {
 		return
 	}
@@ -344,6 +345,6 @@ func (p *Player) OpenPlayList(clearQueue bool) {
 	}
 	if len(playlist) > 0 {
 		p.queue = playlist
-		p.currentQueueIndex = -1 //reset
+		p.currentQueueIndex = -1 // reset
 	}
 }

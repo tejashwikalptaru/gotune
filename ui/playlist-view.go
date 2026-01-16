@@ -2,12 +2,13 @@ package ui
 
 import (
 	"fmt"
+	"strings"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"github.com/tejashwikalptaru/gotune/bass"
 	"github.com/tejashwikalptaru/gotune/ui/extended"
-	"strings"
 )
 
 type PlayListView struct {
@@ -31,7 +32,7 @@ func NewPlayListView(app fyne.App, data []bass.MusicMetaInfo, currentIndex int, 
 		Width:  500,
 		Height: 600,
 	})
-	if len(data) > currentIndex && currentIndex > -1  {
+	if len(data) > currentIndex && currentIndex > -1 {
 		plView.selectedPath = data[currentIndex].Path
 	}
 	plView.searchText = widget.NewEntry()

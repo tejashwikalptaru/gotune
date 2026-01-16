@@ -1,9 +1,10 @@
 package main
 
 import (
+	"log"
+
 	"github.com/tejashwikalptaru/gotune/bass"
 	"github.com/tejashwikalptaru/gotune/ui"
-	"log"
 )
 
 var plView *ui.PlayListView
@@ -15,7 +16,7 @@ func handleMainWindowButtonClicks(app *ui.Main, player *bass.Player) {
 			_, _ = player.Pause()
 			return
 		}
-		_ ,_ = player.Play()
+		_, _ = player.Play()
 	})
 	app.OnMute(func() {
 		mute := !player.IsMute()
@@ -109,7 +110,7 @@ func handlePlayerCallbacks(app *ui.Main, player *bass.Player) {
 }
 
 func createPlayer() *bass.Player {
-	player, err := bass.New(-1, 44100, bass.InitFlag3D | bass.InitFlagSTEREO)
+	player, err := bass.New(-1, 44100, bass.InitFlag3D|bass.InitFlagSTEREO)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -127,7 +128,7 @@ func main() {
 	// audio player instance
 	player := createPlayer()
 	defer func(player *bass.Player) {
-		//player.SaveHistory()
+		// player.SaveHistory()
 		err := player.Free()
 		if err != nil {
 			log.Fatal(err)

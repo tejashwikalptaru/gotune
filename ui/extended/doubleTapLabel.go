@@ -8,7 +8,7 @@ import (
 type DoubleTapLabel struct {
 	widget.Label
 	doubleTapped func(index int)
-	index int
+	index        int
 }
 
 func NewDoubleTapLabel(f func(int)) *DoubleTapLabel {

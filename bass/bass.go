@@ -140,7 +140,6 @@ func channelSlideAttribute(ch int64, flags ChannelAttributes, value float32, tim
 	return false
 }
 
-
 func errMsg(c int) *Error {
 	if c == 0 {
 		return nil

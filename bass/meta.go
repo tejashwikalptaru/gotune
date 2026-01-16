@@ -1,12 +1,13 @@
 package bass
 
 import (
-	"github.com/dhowden/tag"
-	"github.com/tejashwikalptaru/gotune/utils"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/dhowden/tag"
+	"github.com/tejashwikalptaru/gotune/utils"
 )
 
 type BasicMeta struct {

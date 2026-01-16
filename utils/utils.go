@@ -2,18 +2,19 @@ package utils
 
 import (
 	"errors"
-	"github.com/sqweek/dialog"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/sqweek/dialog"
 )
 
 const (
-	APPNAME string = "Go Tune"
-	HISTORY string = "Go Tune History"
-	HEIGHT float32 = 300
-	WIDTH float32 = 450
-	PACKAGE string = "com.tejashwi.gotune.preferences"
+	APPNAME string  = "Go Tune"
+	HISTORY string  = "Go Tune History"
+	HEIGHT  float32 = 300
+	WIDTH   float32 = 450
+	PACKAGE string  = "com.tejashwi.gotune.preferences"
 )
 
 var supportedFormats = []string{
@@ -52,9 +53,13 @@ var supportedFormats = []string{
 	".ofs",
 	".tta",
 }
+
 type ScanFolderCallBack func(string)
-var ScanCancelled = errors.New("scanning cancelled by user")
+
+var ErrScanCancelled = errors.New("scanning cancelled by user")
+
 type ScanStatus int
+
 const (
 	ScanStopped ScanStatus = 0
 	ScanRunning ScanStatus = 1
@@ -64,7 +69,7 @@ func ScanFolder(folderPath string, callback ScanFolderCallBack, status *ScanStat
 	result := make([]string, 0)
 	addPath := func(path string, info os.FileInfo, err error) error {
 		if *status == ScanStopped {
-			return ScanCancelled
+			return ErrScanCancelled
 		}
 		if err != nil {
 			return err
@@ -106,7 +111,7 @@ func ShowInfo(title, format string, args ...interface{}) bool {
 func removeDot(input []string) []string {
 	removed := make([]string, 0)
 	for _, val := range input {
-		removed = append(removed, strings.Replace(val,".", "", -1))
+		removed = append(removed, strings.ReplaceAll(val, ".", ""))
 	}
 	return removed
 }

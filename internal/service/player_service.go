@@ -442,7 +442,7 @@ func (s *PlaybackService) publishProgressUpdate() {
 
 	// Handle track finished (only if not manually stopped)
 	if status == domain.StatusStopped && !s.manualStop {
-		s.handleTrackFinished()
+		// s.handleTrackFinished()
 	}
 }
 
@@ -466,7 +466,7 @@ func (s *PlaybackService) handleTrackFinished() {
 		s.mu.RUnlock()
 		s.mu.Lock()
 
-		// Reload and play (without changing index)
+		// Reload and play (without changing the index)
 		if s.currentTrack != nil {
 			s.stopInternal()
 			s.LoadTrack(track, s.currentIndex)

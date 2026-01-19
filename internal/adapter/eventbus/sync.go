@@ -4,6 +4,8 @@ package eventbus
 
 import (
 	"fmt"
+	"reflect"
+	"runtime"
 	"sync"
 	"sync/atomic"
 
@@ -102,6 +104,7 @@ func (bus *SyncEventBus) callHandler(handler domain.EventHandler, event domain.E
 		}
 	}()
 
+	fmt.Printf("Event: %s called, handler: %s\n", event.Type(), runtime.FuncForPC(reflect.ValueOf(handler).Pointer()).Name())
 	handler(event)
 }
 

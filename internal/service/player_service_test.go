@@ -13,8 +13,8 @@ import (
 )
 
 // Helper to create a test playback service
-func newTestPlaybackService() (*PlaybackService, *mock.MockEngine, *eventbus.SyncEventBus) {
-	engine := mock.NewMockEngine()
+func newTestPlaybackService() (*PlaybackService, *mock.Engine, *eventbus.SyncEventBus) {
+	engine := mock.NewEngine()
 	bus := eventbus.NewSyncEventBus()
 
 	service := NewPlaybackService(engine, bus)

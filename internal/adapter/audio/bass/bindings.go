@@ -1,5 +1,5 @@
 // Package bass provides low-level CGO bindings to the BASS audio library.
-// These functions are internal and should not be used directly - use the BassEngine instead.
+// These functions are internal and should not be used directly - use the Engine instead.
 package bass
 
 /*

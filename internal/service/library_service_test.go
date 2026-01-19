@@ -13,9 +13,9 @@ import (
 	"github.com/tejashwikalptaru/gotune/internal/domain"
 )
 
-// Helper to create test library service
-func newTestLibraryService() (*LibraryService, *mock.MockEngine, *eventbus.SyncEventBus) {
-	engine := mock.NewMockEngine()
+// Helper to create a test library service
+func newTestLibraryService() (*LibraryService, *mock.Engine, *eventbus.SyncEventBus) {
+	engine := mock.NewEngine()
 	engine.Initialize(-1, 44100, 0)
 
 	bus := eventbus.NewSyncEventBus()

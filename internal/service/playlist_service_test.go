@@ -114,7 +114,7 @@ func (m *mockHistoryRepository) Clear() error {
 
 // Helper to create a test playlist service
 func newTestPlaylistService() (*PlaylistService, *PlaybackService, *eventbus.SyncEventBus) {
-	engine := mock.NewMockEngine()
+	engine := mock.NewEngine()
 	engine.Initialize(-1, 44100, 0)
 
 	bus := eventbus.NewSyncEventBus()
@@ -455,7 +455,7 @@ func TestPlaylistService_GetQueue(t *testing.T) {
 }
 
 func TestPlaylistService_SaveAndLoadQueue(t *testing.T) {
-	engine := mock.NewMockEngine()
+	engine := mock.NewEngine()
 	engine.Initialize(-1, 44100, 0)
 
 	bus := eventbus.NewSyncEventBus()

@@ -103,6 +103,9 @@ type PlaybackState struct {
 	// Position is the current playback position within the track
 	Position time.Duration
 
+	// Duration is the total duration of the current track
+	Duration time.Duration
+
 	// Volume is the current volume level (0.0 to 1.0)
 	Volume float64
 

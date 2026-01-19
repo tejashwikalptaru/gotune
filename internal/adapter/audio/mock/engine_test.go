@@ -11,10 +11,10 @@ import (
 
 // TestNewMockEngine tests creating a new mock engine.
 func TestNewMockEngine(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 
 	if engine == nil {
-		t.Fatal("NewMockEngine returned nil")
+		t.Fatal("NewEngine returned nil")
 	}
 
 	if engine.IsInitialized() {
@@ -28,7 +28,7 @@ func TestNewMockEngine(t *testing.T) {
 
 // TestInitialize tests engine initialization.
 func TestInitialize(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 
 	err := engine.Initialize(-1, 44100, 0)
 	if err != nil {
@@ -42,7 +42,7 @@ func TestInitialize(t *testing.T) {
 
 // TestInitializeAlreadyInitialized tests initializing an already initialized engine.
 func TestInitializeAlreadyInitialized(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 
 	err := engine.Initialize(-1, 44100, 0)
 	if err != nil {
@@ -58,7 +58,7 @@ func TestInitializeAlreadyInitialized(t *testing.T) {
 
 // TestShutdown tests shutting down the engine.
 func TestShutdown(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	err := engine.Initialize(-1, 44100, 0)
 	if err != nil {
 		t.Errorf("Initialization failed: %v", err)
@@ -94,7 +94,7 @@ func TestShutdown(t *testing.T) {
 
 // TestLoad tests loading tracks.
 func TestLoad(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -114,7 +114,7 @@ func TestLoad(t *testing.T) {
 
 // TestLoadMultipleTracks tests loading multiple tracks.
 func TestLoadMultipleTracks(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -133,7 +133,7 @@ func TestLoadMultipleTracks(t *testing.T) {
 
 // TestLoadWithoutInitialize tests loading without initialization.
 func TestLoadWithoutInitialize(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 
 	_, err := engine.Load("/path/to/test.mp3")
 	if !errors.Is(err, domain.ErrNotInitialized) {
@@ -143,7 +143,7 @@ func TestLoadWithoutInitialize(t *testing.T) {
 
 // TestUnload tests unloading tracks.
 func TestUnload(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -167,7 +167,7 @@ func TestUnload(t *testing.T) {
 
 // TestPlay tests starting playback.
 func TestPlay(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -186,7 +186,7 @@ func TestPlay(t *testing.T) {
 
 // TestPause tests pausing playback.
 func TestPause(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -206,7 +206,7 @@ func TestPause(t *testing.T) {
 
 // TestStop tests stopping playback.
 func TestStop(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -232,7 +232,7 @@ func TestStop(t *testing.T) {
 
 // TestDuration tests getting track duration.
 func TestDuration(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -250,7 +250,7 @@ func TestDuration(t *testing.T) {
 
 // TestPosition tests getting and setting position.
 func TestPosition(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -280,7 +280,7 @@ func TestPosition(t *testing.T) {
 
 // TestSeekInvalidPosition tests seeking invalid positions.
 func TestSeekInvalidPosition(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -301,7 +301,7 @@ func TestSeekInvalidPosition(t *testing.T) {
 
 // TestVolume tests volume control.
 func TestVolume(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -331,7 +331,7 @@ func TestVolume(t *testing.T) {
 
 // TestVolumeInvalidRange tests setting volume out of range.
 func TestVolumeInvalidRange(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -352,7 +352,7 @@ func TestVolumeInvalidRange(t *testing.T) {
 
 // TestGetMetadata tests extracting metadata.
 func TestGetMetadata(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 
 	track, err := engine.GetMetadata("/path/to/test.mp3")
 	if err != nil {
@@ -382,7 +382,7 @@ func TestGetMetadata(t *testing.T) {
 
 // TestGetMetadataMODFormat tests MOD format detection.
 func TestGetMetadataMODFormat(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 
 	track, _ := engine.GetMetadata("/path/to/test.mod")
 
@@ -397,7 +397,7 @@ func TestGetMetadataMODFormat(t *testing.T) {
 
 // TestSimulateProgress tests simulating playback progress.
 func TestSimulateProgress(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -437,7 +437,7 @@ func TestSimulateProgress(t *testing.T) {
 
 // TestFailInitialize tests configured initialization failure.
 func TestFailInitialize(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.SetFailInitialize(true)
 
 	err := engine.Initialize(-1, 44100, 0)
@@ -452,7 +452,7 @@ func TestFailInitialize(t *testing.T) {
 
 // TestFailLoad tests configured load failure.
 func TestFailLoad(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -466,7 +466,7 @@ func TestFailLoad(t *testing.T) {
 
 // TestFailPlay tests configured playback failure.
 func TestFailPlay(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -482,7 +482,7 @@ func TestFailPlay(t *testing.T) {
 
 // TestConcurrentLoad tests concurrent track loading.
 func TestConcurrentLoad(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 
@@ -522,7 +522,7 @@ func TestConcurrentLoad(t *testing.T) {
 
 // TestConcurrentPlayback tests concurrent playback operations.
 func TestConcurrentPlayback(t *testing.T) {
-	engine := NewMockEngine()
+	engine := NewEngine()
 	engine.Initialize(-1, 44100, 0)
 	defer engine.Shutdown()
 

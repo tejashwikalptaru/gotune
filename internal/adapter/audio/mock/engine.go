@@ -12,11 +12,11 @@ import (
 	"github.com/tejashwikalptaru/gotune/internal/ports"
 )
 
-// MockEngine is a mock implementation of the AudioEngine interface.
+// Engine is a mock implementation of the AudioEngine interface.
 // It simulates audio playback in memory without actually playing audio.
 //
 // Thread-safety: This implementation is thread-safe.
-type MockEngine struct {
+type Engine struct {
 	// Configuration
 	initialized bool
 	device      int
@@ -44,37 +44,37 @@ type mockTrack struct {
 	status   domain.PlaybackStatus
 }
 
-// NewMockEngine creates a new mock audio engine.
-func NewMockEngine() *MockEngine {
-	return &MockEngine{
+// NewEngine creates a new mock audio engine.
+func NewEngine() *Engine {
+	return &Engine{
 		tracks:     make(map[domain.TrackHandle]*mockTrack),
 		nextHandle: 1,
 	}
 }
 
 // SetFailInitialize configures the mock to fail initialization (for testing).
-func (m *MockEngine) SetFailInitialize(fail bool) {
+func (m *Engine) SetFailInitialize(fail bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.failInitialize = fail
 }
 
 // SetFailLoad configures the mock to fail loading tracks (for testing).
-func (m *MockEngine) SetFailLoad(fail bool) {
+func (m *Engine) SetFailLoad(fail bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.failLoad = fail
 }
 
 // SetFailPlay configures the mock to fail playback (for testing).
-func (m *MockEngine) SetFailPlay(fail bool) {
+func (m *Engine) SetFailPlay(fail bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.failPlay = fail
 }
 
 // Initialize initializes the mock audio engine.
-func (m *MockEngine) Initialize(device int, frequency int, flags int) error {
+func (m *Engine) Initialize(device int, frequency int, flags int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -95,7 +95,7 @@ func (m *MockEngine) Initialize(device int, frequency int, flags int) error {
 }
 
 // Shutdown shuts down the mock audio engine.
-func (m *MockEngine) Shutdown() error {
+func (m *Engine) Shutdown() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -110,14 +110,14 @@ func (m *MockEngine) Shutdown() error {
 }
 
 // IsInitialized returns true if the engine is initialized.
-func (m *MockEngine) IsInitialized() bool {
+func (m *Engine) IsInitialized() bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.initialized
 }
 
 // Load loads an audio file and returns a handle.
-func (m *MockEngine) Load(filePath string) (domain.TrackHandle, error) {
+func (m *Engine) Load(filePath string) (domain.TrackHandle, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -152,7 +152,7 @@ func (m *MockEngine) Load(filePath string) (domain.TrackHandle, error) {
 }
 
 // Unload unloads a previously loaded track.
-func (m *MockEngine) Unload(handle domain.TrackHandle) error {
+func (m *Engine) Unload(handle domain.TrackHandle) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -169,7 +169,7 @@ func (m *MockEngine) Unload(handle domain.TrackHandle) error {
 }
 
 // Play starts or resumes playback.
-func (m *MockEngine) Play(handle domain.TrackHandle) error {
+func (m *Engine) Play(handle domain.TrackHandle) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -196,7 +196,7 @@ func (m *MockEngine) Play(handle domain.TrackHandle) error {
 }
 
 // Pause pauses playback.
-func (m *MockEngine) Pause(handle domain.TrackHandle) error {
+func (m *Engine) Pause(handle domain.TrackHandle) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -217,7 +217,7 @@ func (m *MockEngine) Pause(handle domain.TrackHandle) error {
 }
 
 // Stop stops playback and unloads the track.
-func (m *MockEngine) Stop(handle domain.TrackHandle) error {
+func (m *Engine) Stop(handle domain.TrackHandle) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -240,7 +240,7 @@ func (m *MockEngine) Stop(handle domain.TrackHandle) error {
 }
 
 // Status returns the playback status.
-func (m *MockEngine) Status(handle domain.TrackHandle) (domain.PlaybackStatus, error) {
+func (m *Engine) Status(handle domain.TrackHandle) (domain.PlaybackStatus, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -257,7 +257,7 @@ func (m *MockEngine) Status(handle domain.TrackHandle) (domain.PlaybackStatus, e
 }
 
 // Position returns the current playback position.
-func (m *MockEngine) Position(handle domain.TrackHandle) (time.Duration, error) {
+func (m *Engine) Position(handle domain.TrackHandle) (time.Duration, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -274,7 +274,7 @@ func (m *MockEngine) Position(handle domain.TrackHandle) (time.Duration, error) 
 }
 
 // Duration returns the total track duration.
-func (m *MockEngine) Duration(handle domain.TrackHandle) (time.Duration, error) {
+func (m *Engine) Duration(handle domain.TrackHandle) (time.Duration, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -291,7 +291,7 @@ func (m *MockEngine) Duration(handle domain.TrackHandle) (time.Duration, error) 
 }
 
 // Seek sets the playback position.
-func (m *MockEngine) Seek(handle domain.TrackHandle, position time.Duration) error {
+func (m *Engine) Seek(handle domain.TrackHandle, position time.Duration) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -313,7 +313,7 @@ func (m *MockEngine) Seek(handle domain.TrackHandle, position time.Duration) err
 }
 
 // SetVolume sets the playback volume.
-func (m *MockEngine) SetVolume(handle domain.TrackHandle, volume float64) error {
+func (m *Engine) SetVolume(handle domain.TrackHandle, volume float64) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -335,7 +335,7 @@ func (m *MockEngine) SetVolume(handle domain.TrackHandle, volume float64) error 
 }
 
 // GetVolume returns the current volume.
-func (m *MockEngine) GetVolume(handle domain.TrackHandle) (float64, error) {
+func (m *Engine) GetVolume(handle domain.TrackHandle) (float64, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -352,7 +352,7 @@ func (m *MockEngine) GetVolume(handle domain.TrackHandle) (float64, error) {
 }
 
 // GetMetadata extracts mock metadata from a file path.
-func (m *MockEngine) GetMetadata(filePath string) (*domain.MusicTrack, error) {
+func (m *Engine) GetMetadata(filePath string) (*domain.MusicTrack, error) {
 	if filePath == "" {
 		return nil, domain.ErrInvalidFilePath
 	}
@@ -396,7 +396,7 @@ func isMODFormat(ext string) bool {
 }
 
 // GetLoadedTracks returns the number of currently loaded tracks (for testing).
-func (m *MockEngine) GetLoadedTracks() int {
+func (m *Engine) GetLoadedTracks() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return len(m.tracks)
@@ -404,7 +404,7 @@ func (m *MockEngine) GetLoadedTracks() int {
 
 // SimulateProgress simulates playback progress (for testing).
 // This advances the position by the specified duration.
-func (m *MockEngine) SimulateProgress(handle domain.TrackHandle, delta time.Duration) error {
+func (m *Engine) SimulateProgress(handle domain.TrackHandle, delta time.Duration) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -426,5 +426,5 @@ func (m *MockEngine) SimulateProgress(handle domain.TrackHandle, delta time.Dura
 	return nil
 }
 
-// Verify that MockEngine implements the AudioEngine interface
-var _ ports.AudioEngine = (*MockEngine)(nil)
+// Verify that Engine implements the AudioEngine interface
+var _ ports.AudioEngine = (*Engine)(nil)

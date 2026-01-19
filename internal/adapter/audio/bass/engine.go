@@ -2,6 +2,7 @@
 package bass
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -9,11 +10,11 @@ import (
 	"github.com/tejashwikalptaru/gotune/internal/ports"
 )
 
-// BassEngine is the BASS library implementation of the AudioEngine interface.
+// Engine is the BASS library implementation of the AudioEngine interface.
 // It wraps the Un4seen BASS library for audio playback with thread-safe operations.
 //
 // Thread-safety: This implementation is thread-safe via sync.RWMutex.
-type BassEngine struct {
+type Engine struct {
 	// Configuration
 	initialized bool
 	device      int
@@ -32,15 +33,15 @@ type trackInfo struct {
 	isMOD    bool // True if this is a MOD/tracker file
 }
 
-// NewBassEngine creates a new BASS audio engine.
-func NewBassEngine() *BassEngine {
-	return &BassEngine{
+// NewEngine creates a new BASS audio engine.
+func NewEngine() *Engine {
+	return &Engine{
 		tracks: make(map[domain.TrackHandle]*trackInfo),
 	}
 }
 
 // Initialize sets up the BASS audio engine.
-func (e *BassEngine) Initialize(device int, frequency int, flags int) error {
+func (e *Engine) Initialize(device int, frequency int, flags int) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -62,7 +63,7 @@ func (e *BassEngine) Initialize(device int, frequency int, flags int) error {
 }
 
 // Shutdown releases all BASS engine resources.
-func (e *BassEngine) Shutdown() error {
+func (e *Engine) Shutdown() error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -72,7 +73,13 @@ func (e *BassEngine) Shutdown() error {
 
 	// Stop and free all loaded tracks
 	for handle := range e.tracks {
-		e.unloadInternal(handle)
+		if err := e.unloadInternal(handle); err != nil {
+			// Log the error, but continue with shutdown
+			// In a real application, you might want a more robust error handling
+			// or logging mechanism here.
+			// For now, we'll just print it to stderr.
+			// fmt.Fprintf(os.Stderr, "Error unloading track %d during shutdown: %v\n", handle, err)
+		}
 	}
 
 	err := bassFree()
@@ -87,14 +94,14 @@ func (e *BassEngine) Shutdown() error {
 }
 
 // IsInitialized returns true if the engine is initialized.
-func (e *BassEngine) IsInitialized() bool {
+func (e *Engine) IsInitialized() bool {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.initialized
 }
 
 // Load loads an audio file and returns a handle.
-func (e *BassEngine) Load(filePath string) (domain.TrackHandle, error) {
+func (e *Engine) Load(filePath string) (domain.TrackHandle, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -149,7 +156,7 @@ func (e *BassEngine) Load(filePath string) (domain.TrackHandle, error) {
 }
 
 // Unload releases resources for a loaded track.
-func (e *BassEngine) Unload(handle domain.TrackHandle) error {
+func (e *Engine) Unload(handle domain.TrackHandle) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -161,14 +168,16 @@ func (e *BassEngine) Unload(handle domain.TrackHandle) error {
 }
 
 // unloadInternal unloads a track without locking (caller must hold lock).
-func (e *BassEngine) unloadInternal(handle domain.TrackHandle) error {
+func (e *Engine) unloadInternal(handle domain.TrackHandle) error {
 	track, exists := e.tracks[handle]
 	if !exists {
 		return domain.ErrInvalidTrackHandle
 	}
 
 	// Stop the channel first
-	bassChannelStop(track.handle)
+	if err := bassChannelStop(track.handle); err != nil {
+		return err
+	}
 
 	// Free the channel
 	if track.isMOD {
@@ -184,29 +193,47 @@ func (e *BassEngine) unloadInternal(handle domain.TrackHandle) error {
 }
 
 // Play starts or resumes playback.
-func (e *BassEngine) Play(handle domain.TrackHandle) error {
+func (e *Engine) Play(handle domain.TrackHandle) error {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
+	fmt.Printf("DEBUG [Engine]: Play() called with handle %d\n", handle)
+
 	if !e.initialized {
+		fmt.Println("DEBUG [Engine]: Engine not initialized!")
 		return domain.ErrNotInitialized
 	}
 
 	track, exists := e.tracks[handle]
 	if !exists {
+		fmt.Printf("DEBUG [Engine]: Track handle %d not found!\n", handle)
 		return domain.ErrInvalidTrackHandle
 	}
 
+	fmt.Printf("DEBUG [Engine]: Track info - BASS handle: %d, path: %s\n", track.handle, track.filePath)
+
 	status := bassChannelIsActive(track.handle)
+	fmt.Printf("DEBUG [Engine]: Channel status before play: %v\n", status)
 
 	// If stopped, restart from the beginning
 	restart := status == domain.StatusStopped || status == domain.StatusStalled
+	fmt.Printf("DEBUG [Engine]: Calling bassChannelPlay with restart=%v\n", restart)
 
-	return bassChannelPlay(track.handle, restart)
+	err := bassChannelPlay(track.handle, restart)
+	if err != nil {
+		fmt.Printf("DEBUG [Engine]: bassChannelPlay FAILED: %v\n", err)
+	} else {
+		fmt.Println("DEBUG [Engine]: bassChannelPlay returned SUCCESS")
+		// Check status after play
+		newStatus := bassChannelIsActive(track.handle)
+		fmt.Printf("DEBUG [Engine]: Channel status AFTER play: %v\n", newStatus)
+	}
+
+	return err
 }
 
 // Pause pauses playback.
-func (e *BassEngine) Pause(handle domain.TrackHandle) error {
+func (e *Engine) Pause(handle domain.TrackHandle) error {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -223,7 +250,7 @@ func (e *BassEngine) Pause(handle domain.TrackHandle) error {
 }
 
 // Stop stops playback and unloads the track.
-func (e *BassEngine) Stop(handle domain.TrackHandle) error {
+func (e *Engine) Stop(handle domain.TrackHandle) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -260,7 +287,7 @@ func (e *BassEngine) Stop(handle domain.TrackHandle) error {
 }
 
 // Status returns the playback status.
-func (e *BassEngine) Status(handle domain.TrackHandle) (domain.PlaybackStatus, error) {
+func (e *Engine) Status(handle domain.TrackHandle) (domain.PlaybackStatus, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -278,7 +305,7 @@ func (e *BassEngine) Status(handle domain.TrackHandle) (domain.PlaybackStatus, e
 }
 
 // Position returns the current playback position.
-func (e *BassEngine) Position(handle domain.TrackHandle) (time.Duration, error) {
+func (e *Engine) Position(handle domain.TrackHandle) (time.Duration, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -298,7 +325,7 @@ func (e *BassEngine) Position(handle domain.TrackHandle) (time.Duration, error) 
 }
 
 // Duration returns the total track duration.
-func (e *BassEngine) Duration(handle domain.TrackHandle) (time.Duration, error) {
+func (e *Engine) Duration(handle domain.TrackHandle) (time.Duration, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -318,7 +345,7 @@ func (e *BassEngine) Duration(handle domain.TrackHandle) (time.Duration, error) 
 }
 
 // Seek sets the playback position.
-func (e *BassEngine) Seek(handle domain.TrackHandle, position time.Duration) error {
+func (e *Engine) Seek(handle domain.TrackHandle, position time.Duration) error {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -346,7 +373,7 @@ func (e *BassEngine) Seek(handle domain.TrackHandle, position time.Duration) err
 }
 
 // SetVolume sets the playback volume (0.0 to 1.0).
-func (e *BassEngine) SetVolume(handle domain.TrackHandle, volume float64) error {
+func (e *Engine) SetVolume(handle domain.TrackHandle, volume float64) error {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -368,7 +395,7 @@ func (e *BassEngine) SetVolume(handle domain.TrackHandle, volume float64) error 
 }
 
 // GetVolume returns the current volume (0.0 to 1.0).
-func (e *BassEngine) GetVolume(handle domain.TrackHandle) (float64, error) {
+func (e *Engine) GetVolume(handle domain.TrackHandle) (float64, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -390,18 +417,18 @@ func (e *BassEngine) GetVolume(handle domain.TrackHandle) (float64, error) {
 }
 
 // GetMetadata extracts metadata from an audio file without loading it for playback.
-func (e *BassEngine) GetMetadata(filePath string) (*domain.MusicTrack, error) {
+func (e *Engine) GetMetadata(filePath string) (*domain.MusicTrack, error) {
 	// Metadata extraction is handled by the metadata.go file
 	// This is a separate concern from playback
 	return extractMetadata(filePath)
 }
 
 // GetLoadedTracksCount returns the number of currently loaded tracks (for debugging).
-func (e *BassEngine) GetLoadedTracksCount() int {
+func (e *Engine) GetLoadedTracksCount() int {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return len(e.tracks)
 }
 
-// Verify that BassEngine implements the AudioEngine interface
-var _ ports.AudioEngine = (*BassEngine)(nil)
+// Verify that Engine implements the AudioEngine interface
+var _ ports.AudioEngine = (*Engine)(nil)

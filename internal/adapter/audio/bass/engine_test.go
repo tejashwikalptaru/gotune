@@ -96,7 +96,7 @@ func writeUint16LE(buf []byte, val uint16) {
 }
 
 func TestBassEngine_Initialize(t *testing.T) {
-	engine := NewBassEngine()
+	engine := NewEngine()
 	require.NotNil(t, engine)
 
 	// Should not be initialized initially
@@ -118,8 +118,12 @@ func TestBassEngine_Initialize(t *testing.T) {
 }
 
 func TestBassEngine_InitializeTwice(t *testing.T) {
-	engine := NewBassEngine()
-	defer engine.Shutdown()
+	engine := NewEngine()
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	err := engine.Initialize(-1, 44100, 0)
 	require.NoError(t, err)
@@ -130,7 +134,7 @@ func TestBassEngine_InitializeTwice(t *testing.T) {
 }
 
 func TestBassEngine_ShutdownNotInitialized(t *testing.T) {
-	engine := NewBassEngine()
+	engine := NewEngine()
 
 	// Shutdown without initialization should fail
 	err := engine.Shutdown()
@@ -143,8 +147,12 @@ func TestBassEngine_LoadTrack(t *testing.T) {
 		t.Skip("No test audio file available")
 	}
 
-	engine := NewBassEngine()
-	defer engine.Shutdown()
+	engine := NewEngine()
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	err := engine.Initialize(-1, 44100, 0)
 	require.NoError(t, err)
@@ -165,7 +173,7 @@ func TestBassEngine_LoadNotInitialized(t *testing.T) {
 		t.Skip("No test audio file available")
 	}
 
-	engine := NewBassEngine()
+	engine := NewEngine()
 
 	// Load without initialization should fail
 	handle, err := engine.Load(testFile)
@@ -174,8 +182,12 @@ func TestBassEngine_LoadNotInitialized(t *testing.T) {
 }
 
 func TestBassEngine_LoadInvalidPath(t *testing.T) {
-	engine := NewBassEngine()
-	defer engine.Shutdown()
+	engine := NewEngine()
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	err := engine.Initialize(-1, 44100, 0)
 	require.NoError(t, err)
@@ -192,8 +204,12 @@ func TestBassEngine_LoadInvalidPath(t *testing.T) {
 }
 
 func TestBassEngine_UnloadInvalidHandle(t *testing.T) {
-	engine := NewBassEngine()
-	defer engine.Shutdown()
+	engine := NewEngine()
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	err := engine.Initialize(-1, 44100, 0)
 	require.NoError(t, err)
@@ -209,15 +225,23 @@ func TestBassEngine_PlayPauseStop(t *testing.T) {
 		t.Skip("No test audio file available")
 	}
 
-	engine := NewBassEngine()
-	defer engine.Shutdown()
+	engine := NewEngine()
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	err := engine.Initialize(-1, 44100, 0)
 	require.NoError(t, err)
 
 	handle, err := engine.Load(testFile)
 	require.NoError(t, err)
-	defer engine.Unload(handle)
+	defer func() {
+		if err := engine.Unload(handle); err != nil {
+			t.Errorf("Error during engine unload: %v", err)
+		}
+	}()
 
 	// Initial status should be stopped
 	status, err := engine.Status(handle)
@@ -266,8 +290,12 @@ func TestBassEngine_Volume(t *testing.T) {
 		t.Skip("No test audio file available")
 	}
 
-	engine := NewBassEngine()
-	defer engine.Shutdown()
+	engine := NewEngine()
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	err := engine.Initialize(-1, 44100, 0)
 	require.NoError(t, err)
@@ -308,15 +336,23 @@ func TestBassEngine_VolumeInvalidRange(t *testing.T) {
 		t.Skip("No test audio file available")
 	}
 
-	engine := NewBassEngine()
-	defer engine.Shutdown()
+	engine := NewEngine()
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	err := engine.Initialize(-1, 44100, 0)
 	require.NoError(t, err)
 
 	handle, err := engine.Load(testFile)
 	require.NoError(t, err)
-	defer engine.Unload(handle)
+	defer func() {
+		if err := engine.Unload(handle); err != nil {
+			t.Errorf("Error during engine unload: %v", err)
+		}
+	}()
 
 	// Volume below 0
 	err = engine.SetVolume(handle, -0.1)
@@ -333,15 +369,23 @@ func TestBassEngine_PositionAndDuration(t *testing.T) {
 		t.Skip("No test audio file available")
 	}
 
-	engine := NewBassEngine()
-	defer engine.Shutdown()
+	engine := NewEngine()
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	err := engine.Initialize(-1, 44100, 0)
 	require.NoError(t, err)
 
 	handle, err := engine.Load(testFile)
 	require.NoError(t, err)
-	defer engine.Unload(handle)
+	defer func() {
+		if err := engine.Unload(handle); err != nil {
+			t.Errorf("Error during engine unload: %v", err)
+		}
+	}()
 
 	// Get duration
 	duration, err := engine.Duration(handle)
@@ -372,8 +416,12 @@ func TestBassEngine_Seek(t *testing.T) {
 		t.Skip("No test audio file available")
 	}
 
-	engine := NewBassEngine()
-	defer engine.Shutdown()
+	engine := NewEngine()
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	err := engine.Initialize(-1, 44100, 0)
 	require.NoError(t, err)
@@ -409,7 +457,7 @@ func TestBassEngine_SeekInvalidPosition(t *testing.T) {
 		t.Skip("No test audio file available")
 	}
 
-	engine := NewBassEngine()
+	engine := NewEngine()
 	defer engine.Shutdown()
 
 	err := engine.Initialize(-1, 44100, 0)
@@ -437,7 +485,7 @@ func TestBassEngine_GetMetadata(t *testing.T) {
 		t.Skip("No test audio file available")
 	}
 
-	engine := NewBassEngine()
+	engine := NewEngine()
 	// Metadata extraction doesn't require initialization
 
 	metadata, err := engine.GetMetadata(testFile)
@@ -457,7 +505,7 @@ func TestBassEngine_GetMetadata(t *testing.T) {
 }
 
 func TestBassEngine_GetMetadataInvalidPath(t *testing.T) {
-	engine := NewBassEngine()
+	engine := NewEngine()
 
 	// Empty path
 	metadata, err := engine.GetMetadata("")
@@ -476,7 +524,7 @@ func TestBassEngine_MultipleTracksLoaded(t *testing.T) {
 		t.Skip("No test audio file available")
 	}
 
-	engine := NewBassEngine()
+	engine := NewEngine()
 	defer engine.Shutdown()
 
 	err := engine.Initialize(-1, 44100, 0)
@@ -518,7 +566,7 @@ func TestBassEngine_ShutdownWithLoadedTracks(t *testing.T) {
 		t.Skip("No test audio file available")
 	}
 
-	engine := NewBassEngine()
+	engine := NewEngine()
 
 	err := engine.Initialize(-1, 44100, 0)
 	require.NoError(t, err)
@@ -557,7 +605,7 @@ func TestBassEngine_ConcurrentLoad(t *testing.T) {
 		t.Skip("No test audio file available")
 	}
 
-	engine := NewBassEngine()
+	engine := NewEngine()
 	defer engine.Shutdown()
 
 	err := engine.Initialize(-1, 44100, 0)
@@ -601,7 +649,7 @@ func TestBassEngine_ConcurrentPlayback(t *testing.T) {
 		t.Skip("No test audio file available")
 	}
 
-	engine := NewBassEngine()
+	engine := NewEngine()
 	defer engine.Shutdown()
 
 	err := engine.Initialize(-1, 44100, 0)

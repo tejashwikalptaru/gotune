@@ -2,6 +2,7 @@
 package service
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -61,17 +62,23 @@ func (s *PlaybackService) LoadTrack(track domain.MusicTrack, index int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	fmt.Printf("DEBUG: LoadTrack() called for: %s\n", track.FilePath)
+
 	// Stop the current track if any
 	if s.currentHandle != domain.InvalidTrackHandle {
+		fmt.Println("DEBUG: Stopping current track")
 		s.stopInternal()
 	}
 
 	// Load new track
 	handle, err := s.engine.Load(track.FilePath)
 	if err != nil {
+		fmt.Printf("DEBUG: LoadTrack() failed - engine.Load error: %v\n", err)
 		s.bus.Publish(domain.NewTrackErrorEvent(track, err))
 		return err
 	}
+
+	fmt.Printf("DEBUG: Loaded track with handle %d\n", handle)
 
 	// Set volume on a new track
 	if err := s.engine.SetVolume(handle, s.volume); err != nil {
@@ -92,6 +99,8 @@ func (s *PlaybackService) LoadTrack(track domain.MusicTrack, index int) error {
 	s.currentIndex = index
 	s.manualStop = false
 
+	fmt.Printf("DEBUG: LoadTrack() succeeded, currentHandle set to %d\n", s.currentHandle)
+
 	// Publish event
 	s.bus.Publish(domain.NewTrackLoadedEvent(track, handle, duration, index))
 
@@ -103,26 +112,38 @@ func (s *PlaybackService) Play() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	fmt.Println("DEBUG: Play() called")
+
 	if s.currentHandle == domain.InvalidTrackHandle {
+		fmt.Println("DEBUG: Play() failed - invalid track handle")
 		return domain.ErrInvalidTrackHandle
 	}
+
+	fmt.Printf("DEBUG: Play() attempting with handle %d\n", s.currentHandle)
 
 	// Check the current status
 	status, err := s.engine.Status(s.currentHandle)
 	if err != nil {
+		fmt.Printf("DEBUG: Play() failed - status check error: %v\n", err)
 		return err
 	}
 
+	fmt.Printf("DEBUG: Current status: %v\n", status)
+
 	// Already playing
 	if status == domain.StatusPlaying {
+		fmt.Println("DEBUG: Already playing, returning")
 		return nil
 	}
 
 	// Start/resume playback
 	s.manualStop = false
 	if err := s.engine.Play(s.currentHandle); err != nil {
+		fmt.Printf("DEBUG: Play() failed - engine.Play error: %v\n", err)
 		return err
 	}
+
+	fmt.Println("DEBUG: Play() succeeded, publishing event")
 
 	// Publish event
 	if s.currentTrack != nil {

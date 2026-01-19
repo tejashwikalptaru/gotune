@@ -3,6 +3,7 @@ package bass
 
 import (
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -74,11 +75,7 @@ func (e *Engine) Shutdown() error {
 	// Stop and free all loaded tracks
 	for handle := range e.tracks {
 		if err := e.unloadInternal(handle); err != nil {
-			// Log the error, but continue with shutdown
-			// In a real application, you might want a more robust error handling
-			// or logging mechanism here.
-			// For now, we'll just print it to stderr.
-			// fmt.Fprintf(os.Stderr, "Error unloading track %d during shutdown: %v\n", handle, err)
+			fmt.Fprintf(os.Stderr, "Error unloading track %d during shutdown: %v\n", handle, err)
 		}
 	}
 
@@ -186,7 +183,7 @@ func (e *Engine) unloadInternal(handle domain.TrackHandle) error {
 		bassStreamFree(track.handle)
 	}
 
-	// Remove from map
+	// Remove from the map
 	delete(e.tracks, handle)
 
 	return nil

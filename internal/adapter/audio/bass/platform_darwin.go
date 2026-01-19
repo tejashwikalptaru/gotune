@@ -1,5 +1,4 @@
 //go:build darwin
-// +build darwin
 
 // Package bass provides macOS-specific CGO configuration for the BASS library.
 package bass

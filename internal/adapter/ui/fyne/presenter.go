@@ -191,8 +191,8 @@ func (p *Presenter) onTrackLoaded(event domain.Event) {
 	p.view.SetTrackInfo(e.Track.Title, e.Track.Artist, e.Track.Album)
 
 	// Set total time (convert time.Duration to seconds)
-	if e.Track.Duration > 0 {
-		seconds := e.Track.Duration.Seconds()
+	if e.Duration > 0 {
+		seconds := e.Duration.Seconds()
 		p.view.SetTotalTime(seconds)
 	}
 

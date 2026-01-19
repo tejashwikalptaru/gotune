@@ -362,6 +362,10 @@ func (s *PlaybackService) GetState() domain.PlaybackState {
 		if position, err := s.engine.Position(s.currentHandle); err == nil {
 			state.Position = position
 		}
+
+		if duration, err := s.engine.Duration(s.currentHandle); err == nil {
+			state.Duration = duration
+		}
 	} else {
 		state.Status = domain.StatusStopped
 	}

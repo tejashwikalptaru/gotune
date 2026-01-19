@@ -182,12 +182,8 @@ func (a *Application) loadSavedState() error {
 // Run starts the application.
 // This is called from main.go after the application is created.
 func (a *Application) Run() error {
-	// Publish application started event
-	// a.eventBus.Publish(domain.NewApplicationStartedEvent())
-
 	fmt.Println("GoTune Music Player")
-	fmt.Println("Architecture: Clean Architecture + Event-Driven")
-	fmt.Println("All services initialized successfully ✓")
+	fmt.Println("All services initialized successfully")
 
 	// Show and run UI (blocks until the window is closed)
 	a.mainWindow.ShowAndRun()
@@ -196,7 +192,7 @@ func (a *Application) Run() error {
 }
 
 // Shutdown gracefully shuts down the application.
-// This should be called via defer in main.go.
+// This should be called via deferring in main.go.
 func (a *Application) Shutdown() error {
 	fmt.Println("Shutting down application...")
 

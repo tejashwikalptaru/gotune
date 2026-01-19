@@ -43,9 +43,11 @@ type MainWindow struct {
 	albumArt       *canvas.Image
 
 	// State
-	isDarkTheme bool
-	rotator     *rotate.Rotator
-	stopScroll  chan struct{}
+	isDarkTheme      bool
+	rotator          *rotate.Rotator
+	stopScroll       chan struct{}
+	updatingProgress bool
+	progressMu       sync.Mutex
 
 	// Lifecycle management
 	closeOnce sync.Once
@@ -182,11 +184,15 @@ func (w *MainWindow) wirePresenterHandlers() {
 		w.presenter.OnVolumeChanged(value)
 	}
 
-	// Progress slider (seeking)
-	// Note: We could add seeking on change, but for now we just let the presenter update it
-	// w.progressSlider.OnChanged = func(value float64) {
-	// 	w.presenter.OnSeekRequested(value)
-	// }
+	w.progressSlider.OnChanged = func(value float64) {
+		w.progressMu.Lock()
+		isUpdating := w.updatingProgress
+		w.progressMu.Unlock()
+
+		if !isUpdating {
+			w.presenter.OnSeekRequested(value)
+		}
+	}
 }
 
 // createMenu creates the application menu.
@@ -250,7 +256,7 @@ func (w *MainWindow) handleOpenFolder() {
 func (w *MainWindow) addShortcuts() {
 	w.window.Canvas().AddShortcut(&desktop.CustomShortcut{
 		KeyName:  fyneapp.KeyUp,
-		Modifier: desktop.AltModifier,
+		Modifier: fyneapp.KeyModifierAlt,
 	}, func(shortcut fyneapp.Shortcut) {
 		// Volume up
 		currentVol := w.volumeSlider.Value
@@ -263,7 +269,7 @@ func (w *MainWindow) addShortcuts() {
 
 	w.window.Canvas().AddShortcut(&desktop.CustomShortcut{
 		KeyName:  fyneapp.KeyDown,
-		Modifier: desktop.AltModifier,
+		Modifier: fyneapp.KeyModifierAlt,
 	}, func(shortcut fyneapp.Shortcut) {
 		// Volume down
 		currentVol := w.volumeSlider.Value
@@ -279,8 +285,6 @@ func (w *MainWindow) addShortcuts() {
 // This should only be called after the Fyne app is fully initialized (in ShowAndRun).
 // TEMPORARILY DISABLED: Fyne v2 threading requirements need proper implementation
 func (w *MainWindow) startScrollInfoRoutine() {
-	// Scrolling disabled to fix threading violations that block UI interactions
-	// TODO: Implement using Fyne's proper threading primitives or widget bindings
 }
 
 // ShowAndRun shows the window and runs the application.
@@ -308,114 +312,142 @@ func (w *MainWindow) GetWindow() fyneapp.Window {
 
 // SetPlayState updates the play/pause button state.
 func (w *MainWindow) SetPlayState(playing bool) {
-	if playing {
-		w.playButton.SetIcon(theme.MediaPauseIcon())
-	} else {
-		w.playButton.SetIcon(theme.MediaPlayIcon())
-	}
-	w.playButton.Refresh()
+	fyneapp.Do(func() {
+		if playing {
+			w.playButton.SetIcon(theme.MediaPauseIcon())
+		} else {
+			w.playButton.SetIcon(theme.MediaPlayIcon())
+		}
+		w.playButton.Refresh()
+	})
 }
 
 // SetMuteState updates the mute button state.
 func (w *MainWindow) SetMuteState(muted bool) {
-	if muted {
-		w.muteButton.SetIcon(theme.VolumeMuteIcon())
-	} else {
-		w.muteButton.SetIcon(theme.VolumeUpIcon())
-	}
-	w.muteButton.Refresh()
+	fyneapp.Do(func() {
+		if muted {
+			w.muteButton.SetIcon(theme.VolumeMuteIcon())
+		} else {
+			w.muteButton.SetIcon(theme.VolumeUpIcon())
+		}
+		w.muteButton.Refresh()
+	})
 }
 
 // SetLoopState updates the loop button state.
 func (w *MainWindow) SetLoopState(enabled bool) {
-	var icon *fyneapp.StaticResource
-	if w.isDarkTheme {
-		icon = res.ResourceRepeatLightPng
-	} else {
-		icon = res.ResourceRepeatDarkPng
-	}
+	fyneapp.Do(func() {
+		var icon *fyneapp.StaticResource
+		if w.isDarkTheme {
+			icon = res.ResourceRepeatLightPng
+		} else {
+			icon = res.ResourceRepeatDarkPng
+		}
 
-	if enabled {
-		w.loopButton.SetIcon(icon)
-	} else {
-		w.loopButton.SetIcon(theme.MediaReplayIcon())
-	}
-	w.loopButton.Refresh()
+		if enabled {
+			w.loopButton.SetIcon(icon)
+		} else {
+			w.loopButton.SetIcon(theme.MediaReplayIcon())
+		}
+		w.loopButton.Refresh()
+	})
 }
 
 // SetVolume updates the volume slider.
 func (w *MainWindow) SetVolume(volume float64) {
-	// Convert from 0.0-1.0 to 0-100
-	w.volumeSlider.Value = volume * 100.0
-	w.volumeSlider.Refresh()
+	fyneapp.Do(func() {
+		// Convert from 0.0-1.0 to 0-100
+		w.volumeSlider.Value = volume * 100.0
+		w.volumeSlider.Refresh()
+	})
 }
 
 // SetTrackInfo updates the displayed track information.
 func (w *MainWindow) SetTrackInfo(title, artist, album string) {
-	// Format: "Artist - Title"
-	var text string
-	if artist != "" && title != "" {
-		text = fmt.Sprintf("%s - %s", artist, title)
-	} else if title != "" {
-		text = title
-	} else {
-		text = "No track loaded"
-	}
+	fyneapp.Do(func() {
+		// Format: "Artist - Title"
+		var text string
+		if artist != "" && title != "" {
+			text = fmt.Sprintf("%s - %s", artist, title)
+		} else if title != "" {
+			text = title
+		} else {
+			text = "No track loaded"
+		}
 
-	// Update rotator for scrolling text
-	w.rotator = rotate.NewRotator(text, 15)
+		// Update rotator for scrolling text
+		w.rotator = rotate.NewRotator(text, 15)
+	})
 }
 
 // SetAlbumArt updates the album artwork.
 func (w *MainWindow) SetAlbumArt(imageData []byte) {
-	img, _, err := image.Decode(bytes.NewReader(imageData))
-	if err != nil {
-		// If decode fails, use default
-		w.ClearAlbumArt()
-		return
-	}
+	fyneapp.Do(func() {
+		img, _, err := image.Decode(bytes.NewReader(imageData))
+		if err != nil {
+			// If decode fails, use default
+			w.ClearAlbumArt()
+			return
+		}
 
-	w.albumArt.Image = img
-	w.albumArt.Refresh()
+		w.albumArt.Image = img
+		w.albumArt.Refresh()
+	})
 }
 
-// ClearAlbumArt resets the album artwork to default.
+// ClearAlbumArt resets the album artwork to the default.
 func (w *MainWindow) ClearAlbumArt() {
-	w.albumArt.Resource = res.ResourceMusicPng
-	w.albumArt.Image = nil
-	w.albumArt.Refresh()
+	fyneapp.Do(func() {
+		w.albumArt.Resource = res.ResourceMusicPng
+		w.albumArt.Image = nil
+		w.albumArt.Refresh()
+	})
 }
 
 // SetCurrentTime updates the current playback time display.
 func (w *MainWindow) SetCurrentTime(seconds float64) {
-	format := fmt.Sprintf("%.2d:%.2d", int(seconds/60), int(math.Mod(seconds, 60)))
-	w.currentTime.SetText(format)
+	fyneapp.Do(func() {
+		format := fmt.Sprintf("%.2d:%.2d", int(seconds/60), int(math.Mod(seconds, 60)))
+		w.currentTime.SetText(format)
+	})
 }
 
 // SetTotalTime updates the total track duration display.
 func (w *MainWindow) SetTotalTime(seconds float64) {
-	format := fmt.Sprintf("%.2d:%.2d", int(seconds/60), int(math.Mod(seconds, 60)))
-	w.progressSlider.Max = seconds
-	w.endTime.SetText(format)
+	fyneapp.Do(func() {
+		format := fmt.Sprintf("%.2d:%.2d", int(seconds/60), int(math.Mod(seconds, 60)))
+		w.progressSlider.Max = seconds
+		w.endTime.SetText(format)
+	})
 }
 
 // SetProgress updates the progress slider position.
 func (w *MainWindow) SetProgress(position, duration float64) {
-	if duration > 0 {
-		w.progressSlider.Value = position
-		w.progressSlider.Refresh()
-	}
+	fyneapp.Do(func() {
+		if duration > 0 {
+			w.progressMu.Lock()
+			w.updatingProgress = true
+			w.progressSlider.Value = position
+			w.progressSlider.Refresh()
+			w.updatingProgress = false
+			w.progressMu.Unlock()
+		}
+	})
 }
 
 // UpdatePlaylistSelection updates the selected track in the playlist view.
 func (w *MainWindow) UpdatePlaylistSelection(index int) {
-	// TODO: Update playlist window if it's open
-	// For now, this is a no-op
+	fyneapp.Do(func() {
+		// TODO: Update playlist window if it's open
+		// For now, this is a no-op
+	})
 }
 
 // ShowNotification displays a system notification.
 func (w *MainWindow) ShowNotification(title, message string) {
-	w.app.SendNotification(fyneapp.NewNotification(title, message))
+	fyneapp.Do(func() {
+		w.app.SendNotification(fyneapp.NewNotification(title, message))
+	})
 }
 
 // Verify UIView implementation

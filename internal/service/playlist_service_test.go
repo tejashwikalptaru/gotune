@@ -172,6 +172,39 @@ func TestPlaylistService_AddTrack_PlayImmediately(t *testing.T) {
 	state := playback.GetState()
 	assert.NotNil(t, state.CurrentTrack)
 	assert.Equal(t, track.ID, state.CurrentTrack.ID)
+	assert.Equal(t, domain.StatusPlaying, state.Status)
+}
+
+func TestPlaylistService_AddTrack_ReplaceCurrentlyPlaying(t *testing.T) {
+	service, playback, _ := newTestPlaylistService()
+	defer service.Shutdown()
+
+	trackA := createTestTrack("A", "Song A", "/test/songA.mp3")
+	trackB := createTestTrack("B", "Song B", "/test/songB.mp3")
+
+	// Add and play first track
+	err := service.AddTrack(trackA, true)
+	require.NoError(t, err)
+
+	// Verify first track is playing
+	state := playback.GetState()
+	assert.NotNil(t, state.CurrentTrack)
+	assert.Equal(t, "A", state.CurrentTrack.ID)
+	assert.Equal(t, domain.StatusPlaying, state.Status)
+
+	// Add second track with playImmediately=true (should replace current)
+	err = service.AddTrack(trackB, true)
+	require.NoError(t, err)
+
+	// Verify second track is now playing
+	state = playback.GetState()
+	assert.NotNil(t, state.CurrentTrack)
+	assert.Equal(t, "B", state.CurrentTrack.ID)
+	assert.Equal(t, domain.StatusPlaying, state.Status)
+
+	// Verify queue has both tracks
+	assert.Equal(t, 2, service.GetQueueLength())
+	assert.Equal(t, 1, service.GetCurrentIndex())
 }
 
 func TestPlaylistService_AddTracks(t *testing.T) {
@@ -197,6 +230,31 @@ func TestPlaylistService_AddTracks(t *testing.T) {
 	// Verify
 	assert.Equal(t, 3, service.GetQueueLength())
 	assert.Equal(t, 3, addedCount)
+}
+
+func TestPlaylistService_AddTracks_PlayFirst(t *testing.T) {
+	service, playback, _ := newTestPlaylistService()
+	defer service.Shutdown()
+
+	tracks := []domain.MusicTrack{
+		createTestTrack("1", "Song 1", "/test/song1.mp3"),
+		createTestTrack("2", "Song 2", "/test/song2.mp3"),
+		createTestTrack("3", "Song 3", "/test/song3.mp3"),
+	}
+
+	// Add multiple tracks and play first
+	err := service.AddTracks(tracks, true)
+	require.NoError(t, err)
+
+	// Verify queue
+	assert.Equal(t, 3, service.GetQueueLength())
+	assert.Equal(t, 0, service.GetCurrentIndex())
+
+	// Verify playback state - first track should be playing
+	state := playback.GetState()
+	assert.NotNil(t, state.CurrentTrack)
+	assert.Equal(t, "1", state.CurrentTrack.ID)
+	assert.Equal(t, domain.StatusPlaying, state.Status)
 }
 
 func TestPlaylistService_RemoveTrack(t *testing.T) {

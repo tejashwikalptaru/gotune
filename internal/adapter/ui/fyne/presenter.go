@@ -94,6 +94,9 @@ func NewPresenter(
 	// Subscribe to events
 	p.subscribeToEvents()
 
+	// Sync UI with current state
+	p.syncInitialState()
+
 	// Start progress ticker
 	p.startProgressUpdates()
 
@@ -102,26 +105,74 @@ func NewPresenter(
 
 // subscribeToEvents subscribes to all relevant events from the event bus.
 func (p *Presenter) subscribeToEvents() {
-	// Playback events
-	p.eventBus.Subscribe(domain.EventTrackLoaded, p.onTrackLoaded)
-	p.eventBus.Subscribe(domain.EventTrackStarted, p.onTrackStarted)
-	p.eventBus.Subscribe(domain.EventTrackPaused, p.onTrackPaused)
-	p.eventBus.Subscribe(domain.EventTrackStopped, p.onTrackStopped)
-	p.eventBus.Subscribe(domain.EventTrackCompleted, p.onTrackCompleted)
+	subscriptions := map[domain.EventType]domain.EventHandler{
+		// Playback events
+		domain.EventTrackLoaded:    p.onTrackLoaded,
+		domain.EventTrackStarted:   p.onTrackStarted,
+		domain.EventTrackPaused:    p.onTrackPaused,
+		domain.EventTrackStopped:   p.onTrackStopped,
+		domain.EventTrackCompleted: p.onTrackCompleted,
 
-	// Volume events
-	p.eventBus.Subscribe(domain.EventVolumeChanged, p.onVolumeChanged)
-	p.eventBus.Subscribe(domain.EventMuteToggled, p.onMuteToggled)
-	p.eventBus.Subscribe(domain.EventLoopToggled, p.onLoopToggled)
+		// Volume events
+		domain.EventVolumeChanged: p.onVolumeChanged,
+		domain.EventMuteToggled:   p.onMuteToggled,
+		domain.EventLoopToggled:   p.onLoopToggled,
 
-	// Playlist events
-	p.eventBus.Subscribe(domain.EventPlaylistUpdated, p.onPlaylistUpdated)
+		// Playlist events
+		domain.EventPlaylistUpdated: p.onPlaylistUpdated,
 
-	// Scan events
-	p.eventBus.Subscribe(domain.EventScanStarted, p.onScanStarted)
-	p.eventBus.Subscribe(domain.EventScanProgress, p.onScanProgress)
-	p.eventBus.Subscribe(domain.EventScanCompleted, p.onScanCompleted)
-	p.eventBus.Subscribe(domain.EventScanCancelled, p.onScanCancelled)
+		// Scan events
+		domain.EventScanStarted:   p.onScanStarted,
+		domain.EventScanProgress:  p.onScanProgress,
+		domain.EventScanCompleted: p.onScanCompleted,
+		domain.EventScanCancelled: p.onScanCancelled,
+	}
+
+	for eventType, handler := range subscriptions {
+		p.eventBus.Subscribe(eventType, handler)
+	}
+}
+
+// syncInitialState synchronizes the UI with the current application state.
+// This is called during presenter initialization to ensure the UI reflects
+// the current state of services (volume, loop mode, loaded track, etc.).
+func (p *Presenter) syncInitialState() {
+	state := p.playbackService.GetState()
+
+	// Update UI with current values
+	p.view.SetVolume(state.Volume * 100.0) // Convert from 0.0-1.0 to 0-100
+	p.view.SetLoopState(state.IsLooping)
+	p.view.SetMuteState(state.IsMuted)
+
+	// If a track is already loaded, update track info
+	if state.CurrentTrack != nil {
+		p.view.SetTrackInfo(
+			state.CurrentTrack.Title,
+			state.CurrentTrack.Artist,
+			state.CurrentTrack.Album,
+		)
+
+		if state.Duration > 0 {
+			p.view.SetTotalTime(state.Duration.Seconds())
+		}
+
+		// Update album art if available
+		if state.CurrentTrack.Metadata != nil &&
+			len(state.CurrentTrack.Metadata.AlbumArt) > 0 {
+			p.view.SetAlbumArt(state.CurrentTrack.Metadata.AlbumArt)
+		} else {
+			p.view.ClearAlbumArt()
+		}
+	}
+
+	// Update play state
+	p.view.SetPlayState(state.Status == domain.StatusPlaying)
+
+	// Update progress if track is loaded
+	if state.Duration > 0 {
+		p.view.SetProgress(state.Position.Seconds(), state.Duration.Seconds())
+		p.view.SetCurrentTime(state.Position.Seconds())
+	}
 }
 
 // Event handlers
@@ -268,10 +319,11 @@ func (p *Presenter) startProgressUpdates() {
 
 func (p *Presenter) updateProgress() {
 	p.mu.RLock()
-	isPlaying := p.isPlaying
+	currentTrack := p.currentTrack
 	p.mu.RUnlock()
 
-	if !isPlaying {
+	// Only update if a track is loaded
+	if currentTrack == nil {
 		return
 	}
 
@@ -401,7 +453,7 @@ func (p *Presenter) OnFolderOpened(folderPath string) error {
 		return err
 	}
 
-	// Add all tracks to playlist (don't play first automatically)
+	// Add all tracks to the playlist (don't play first automatically)
 	err = p.playlistService.AddTracks(tracks, false)
 	if err != nil {
 		return err

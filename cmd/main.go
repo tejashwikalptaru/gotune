@@ -42,7 +42,7 @@ func main() {
 		if err := application.Shutdown(); err != nil {
 			fmt.Fprintf(os.Stderr, "Shutdown error: %v\n", err)
 		}
-		fmt.Println("Shutdown complete ✓")
+		fmt.Println("Shutdown complete")
 	}()
 
 	// Run application (blocks until the window closed)
@@ -50,5 +50,5 @@ func main() {
 		log.Fatalf("Application error: %v", err)
 	}
 
-	fmt.Println("Application exited cleanly ✓")
+	fmt.Println("Application exited cleanly")
 }

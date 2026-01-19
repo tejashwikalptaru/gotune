@@ -26,7 +26,7 @@ unzip -q libs/bass24-osx.zip -d libs/bass24-osx-extracted 2>/dev/null || true
 make -C libs/bass24-osx-extracted 64bit 2>/dev/null || true
 cp libs/bass24-osx-extracted/64bit/libbass.dylib build/libs/darwin/libbass.dylib 2>/dev/null || true
 rm -rf libs/bass24-osx-extracted
-echo "✓ macOS universal binary created"
+echo "macOS universal binary created"
 
 echo ""
 echo "Library setup complete!"

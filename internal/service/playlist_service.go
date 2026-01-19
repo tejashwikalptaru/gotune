@@ -67,7 +67,10 @@ func (s *PlaylistService) AddTrack(track domain.MusicTrack, playImmediately bool
 	// Play immediately if requested
 	if playImmediately {
 		s.currentIndex = newIndex
-		return s.playback.LoadTrack(track, newIndex)
+		if err := s.playback.LoadTrack(track, newIndex); err != nil {
+			return err
+		}
+		return s.playback.Play()
 	}
 
 	return nil
@@ -95,7 +98,10 @@ func (s *PlaylistService) AddTracks(tracks []domain.MusicTrack, playFirst bool) 
 	// Play the first track if requested
 	if playFirst && len(tracks) > 0 {
 		s.currentIndex = startIndex
-		return s.playback.LoadTrack(tracks[0], startIndex)
+		if err := s.playback.LoadTrack(tracks[0], startIndex); err != nil {
+			return err
+		}
+		return s.playback.Play()
 	}
 
 	return nil

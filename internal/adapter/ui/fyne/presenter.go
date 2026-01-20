@@ -235,6 +235,9 @@ func (p *Presenter) onTrackCompleted(event domain.Event) {
 	p.mu.Lock()
 	p.isPlaying = false
 	p.mu.Unlock()
+
+	// Update UI to show play state (not pause)
+	p.view.SetPlayState(false)
 }
 
 func (p *Presenter) onVolumeChanged(event domain.Event) {

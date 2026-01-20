@@ -400,7 +400,10 @@ func (s *PlaylistService) handleAutoNext(event domain.Event) {
 
 	// Check if there's a next track
 	if s.currentIndex >= len(s.queue)-1 {
-		// End of queue, stop playback
+		// End of queue - stop playback to clean up state
+		s.mu.Unlock()
+		s.playback.Stop()
+		s.mu.Lock()
 		return
 	}
 

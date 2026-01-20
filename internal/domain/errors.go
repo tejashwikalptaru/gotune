@@ -51,6 +51,9 @@ var (
 	// ErrInvalidFilePath is returned when a file path is invalid.
 	ErrInvalidFilePath = errors.New("invalid file path")
 
+	// ErrDuplicateTrack is returned when attempting to add a track that already exists in the queue.
+	ErrDuplicateTrack = errors.New("track already exists in queue")
+
 	// ErrScanCancelled is returned when a library scan is canceled.
 	ErrScanCancelled = errors.New("scan cancelled")
 

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -631,11 +632,11 @@ func TestPlaylistService_ConcurrentAddTracks(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
 	defer service.Shutdown()
 
-	// Add tracks concurrently
+	// Add tracks concurrently with unique file paths
 	done := make(chan struct{})
 	for i := 0; i < 10; i++ {
 		go func(index int) {
-			track := createTestTrack(string(rune('0'+index)), "Song", "/test/song.mp3")
+			track := createTestTrack(string(rune('0'+index)), "Song", fmt.Sprintf("/test/song%d.mp3", index))
 			service.AddTrack(track, false)
 			done <- struct{}{}
 		}(i)
@@ -654,9 +655,9 @@ func TestPlaylistService_ConcurrentRemove(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
 	defer service.Shutdown()
 
-	// Add many tracks
+	// Add many tracks with unique file paths
 	for i := 0; i < 20; i++ {
-		track := createTestTrack(string(rune('0'+i)), "Song", "/test/song.mp3")
+		track := createTestTrack(string(rune('0'+i)), "Song", fmt.Sprintf("/test/song%d.mp3", i))
 		service.AddTrack(track, false)
 	}
 
@@ -691,4 +692,293 @@ func TestPlaylistService_Shutdown(t *testing.T) {
 	// Shutdown
 	err := service.Shutdown()
 	assert.NoError(t, err)
+}
+
+// Duplicate detection tests
+
+func TestPlaylistService_AddTrack_Duplicate(t *testing.T) {
+	service, _, _ := newTestPlaylistService()
+	defer service.Shutdown()
+
+	track := createTestTrack("1", "Song 1", "/test/song1.mp3")
+
+	// Add first time - should succeed
+	err := service.AddTrack(track, false)
+	require.NoError(t, err)
+	assert.Equal(t, 1, service.GetQueueLength())
+
+	// Add same track again - should fail with duplicate error
+	err = service.AddTrack(track, false)
+	assert.Equal(t, domain.ErrDuplicateTrack, err)
+	assert.Equal(t, 1, service.GetQueueLength()) // Queue unchanged
+}
+
+func TestPlaylistService_AddTrack_Duplicate_DifferentID_SamePath(t *testing.T) {
+	service, _, _ := newTestPlaylistService()
+	defer service.Shutdown()
+
+	track1 := createTestTrack("1", "Song 1", "/test/song.mp3")
+	track2 := createTestTrack("2", "Song 2", "/test/song.mp3") // Different ID, same path
+
+	// Add first track
+	err := service.AddTrack(track1, false)
+	require.NoError(t, err)
+
+	// Try to add second track with same path
+	err = service.AddTrack(track2, false)
+	assert.Equal(t, domain.ErrDuplicateTrack, err)
+	assert.Equal(t, 1, service.GetQueueLength())
+}
+
+func TestPlaylistService_AddTracks_FilterDuplicates(t *testing.T) {
+	service, _, _ := newTestPlaylistService()
+	defer service.Shutdown()
+
+	track1 := createTestTrack("1", "Song 1", "/test/song1.mp3")
+	track2 := createTestTrack("2", "Song 2", "/test/song2.mp3")
+
+	// Add first track
+	err := service.AddTrack(track1, false)
+	require.NoError(t, err)
+	assert.Equal(t, 1, service.GetQueueLength())
+
+	// Add batch with duplicate + new track
+	tracksToAdd := []domain.MusicTrack{
+		track1, // duplicate
+		track2, // new
+	}
+	err = service.AddTracks(tracksToAdd, false)
+	require.NoError(t, err)
+
+	// Should add only track2, skip track1
+	assert.Equal(t, 2, service.GetQueueLength())
+	queue := service.GetQueue()
+	assert.Equal(t, track1.ID, queue[0].ID)
+	assert.Equal(t, track2.ID, queue[1].ID)
+}
+
+func TestPlaylistService_AddTracks_AllDuplicates(t *testing.T) {
+	service, _, _ := newTestPlaylistService()
+	defer service.Shutdown()
+
+	track := createTestTrack("1", "Song 1", "/test/song1.mp3")
+
+	// Add track first
+	err := service.AddTrack(track, false)
+	require.NoError(t, err)
+
+	// Try to add only duplicates
+	err = service.AddTracks([]domain.MusicTrack{track, track}, false)
+	require.NoError(t, err) // Should not error, just skip all
+
+	assert.Equal(t, 1, service.GetQueueLength()) // Queue unchanged
+}
+
+func TestPlaylistService_AddTracks_PartialDuplicates(t *testing.T) {
+	service, _, _ := newTestPlaylistService()
+	defer service.Shutdown()
+
+	track1 := createTestTrack("1", "Song 1", "/test/song1.mp3")
+	track2 := createTestTrack("2", "Song 2", "/test/song2.mp3")
+	track3 := createTestTrack("3", "Song 3", "/test/song3.mp3")
+
+	// Add first two tracks
+	err := service.AddTracks([]domain.MusicTrack{track1, track2}, false)
+	require.NoError(t, err)
+	assert.Equal(t, 2, service.GetQueueLength())
+
+	// Add batch with some duplicates
+	tracksToAdd := []domain.MusicTrack{
+		track1, // duplicate
+		track3, // new
+		track2, // duplicate
+	}
+	err = service.AddTracks(tracksToAdd, false)
+	require.NoError(t, err)
+
+	// Should add only track3
+	assert.Equal(t, 3, service.GetQueueLength())
+	queue := service.GetQueue()
+	assert.Equal(t, track1.ID, queue[0].ID)
+	assert.Equal(t, track2.ID, queue[1].ID)
+	assert.Equal(t, track3.ID, queue[2].ID)
+}
+
+func TestPlaylistService_ConcurrentDuplicateDetection(t *testing.T) {
+	service, _, _ := newTestPlaylistService()
+	defer service.Shutdown()
+
+	track := createTestTrack("1", "Song 1", "/test/song1.mp3")
+
+	// First add succeeds
+	err := service.AddTrack(track, false)
+	require.NoError(t, err)
+
+	// Concurrent duplicate attempts
+	done := make(chan error, 5)
+	for i := 0; i < 5; i++ {
+		go func() {
+			err := service.AddTrack(track, false)
+			done <- err
+		}()
+	}
+
+	// All concurrent additions should get duplicate error
+	for i := 0; i < 5; i++ {
+		err := <-done
+		assert.Equal(t, domain.ErrDuplicateTrack, err)
+	}
+
+	// Queue should have exactly 1 track
+	assert.Equal(t, 1, service.GetQueueLength())
+}
+
+func TestPlaylistService_Duplicate_PlayImmediately(t *testing.T) {
+	service, _, _ := newTestPlaylistService()
+	defer service.Shutdown()
+
+	track := createTestTrack("1", "Song 1", "/test/song1.mp3")
+
+	// Add and play first time
+	err := service.AddTrack(track, true)
+	require.NoError(t, err)
+	assert.Equal(t, 1, service.GetQueueLength())
+	assert.Equal(t, 0, service.GetCurrentIndex())
+
+	// Try to add same track with playImmediately=true
+	err = service.AddTrack(track, true)
+	assert.Equal(t, domain.ErrDuplicateTrack, err)
+	assert.Equal(t, 1, service.GetQueueLength())
+	assert.Equal(t, 0, service.GetCurrentIndex()) // Current index unchanged
+}
+
+// Event publication tests for playlist highlighting synchronization
+
+func TestPlaylistService_PlayTrackAt_PublishesEvent(t *testing.T) {
+	service, _, bus := newTestPlaylistService()
+	defer service.Shutdown()
+
+	// Add tracks
+	tracks := []domain.MusicTrack{
+		createTestTrack("1", "Song 1", "/test/song1.mp3"),
+		createTestTrack("2", "Song 2", "/test/song2.mp3"),
+		createTestTrack("3", "Song 3", "/test/song3.mp3"),
+	}
+	service.AddTracks(tracks, false)
+
+	// Subscribe to PlaylistUpdated event
+	var updatedEvent domain.PlaylistUpdatedEvent
+	eventReceived := false
+	bus.Subscribe(domain.EventPlaylistUpdated, func(e domain.Event) {
+		if evt, ok := e.(domain.PlaylistUpdatedEvent); ok {
+			updatedEvent = evt
+			eventReceived = true
+		}
+	})
+
+	// Play track at index 2
+	err := service.PlayTrackAt(2)
+	require.NoError(t, err)
+
+	// Verify event was published
+	assert.True(t, eventReceived, "EventPlaylistUpdated should be published")
+	assert.Equal(t, 2, updatedEvent.Index, "Event should contain correct index")
+	assert.Equal(t, 3, len(updatedEvent.Playlist), "Event should contain full playlist")
+}
+
+func TestPlaylistService_PlayNext_PublishesEvent(t *testing.T) {
+	service, _, bus := newTestPlaylistService()
+	defer service.Shutdown()
+
+	// Add tracks
+	tracks := []domain.MusicTrack{
+		createTestTrack("1", "Song 1", "/test/song1.mp3"),
+		createTestTrack("2", "Song 2", "/test/song2.mp3"),
+		createTestTrack("3", "Song 3", "/test/song3.mp3"),
+	}
+	service.AddTracks(tracks, true) // Start playing first
+
+	// Subscribe to PlaylistUpdated event
+	var updatedEvent domain.PlaylistUpdatedEvent
+	eventReceived := false
+	bus.Subscribe(domain.EventPlaylistUpdated, func(e domain.Event) {
+		if evt, ok := e.(domain.PlaylistUpdatedEvent); ok {
+			updatedEvent = evt
+			eventReceived = true
+		}
+	})
+
+	// Play next
+	err := service.PlayNext()
+	require.NoError(t, err)
+
+	// Verify event was published
+	assert.True(t, eventReceived, "EventPlaylistUpdated should be published")
+	assert.Equal(t, 1, updatedEvent.Index, "Event should contain correct index")
+	assert.Equal(t, 3, len(updatedEvent.Playlist), "Event should contain full playlist")
+}
+
+func TestPlaylistService_PlayPrevious_PublishesEvent(t *testing.T) {
+	service, _, bus := newTestPlaylistService()
+	defer service.Shutdown()
+
+	// Add tracks
+	tracks := []domain.MusicTrack{
+		createTestTrack("1", "Song 1", "/test/song1.mp3"),
+		createTestTrack("2", "Song 2", "/test/song2.mp3"),
+		createTestTrack("3", "Song 3", "/test/song3.mp3"),
+	}
+	service.AddTracks(tracks, true) // Start playing first
+
+	// Move to second track
+	service.PlayNext()
+
+	// Subscribe to PlaylistUpdated event
+	var updatedEvent domain.PlaylistUpdatedEvent
+	eventReceived := false
+	bus.Subscribe(domain.EventPlaylistUpdated, func(e domain.Event) {
+		if evt, ok := e.(domain.PlaylistUpdatedEvent); ok {
+			updatedEvent = evt
+			eventReceived = true
+		}
+	})
+
+	// Play previous
+	err := service.PlayPrevious()
+	require.NoError(t, err)
+
+	// Verify event was published
+	assert.True(t, eventReceived, "EventPlaylistUpdated should be published")
+	assert.Equal(t, 0, updatedEvent.Index, "Event should contain correct index")
+	assert.Equal(t, 3, len(updatedEvent.Playlist), "Event should contain full playlist")
+}
+
+func TestPlaylistService_AutoNext_PublishesEvent(t *testing.T) {
+	service, _, bus := newTestPlaylistService()
+	defer service.Shutdown()
+
+	// Add tracks
+	tracks := []domain.MusicTrack{
+		createTestTrack("1", "Song 1", "/test/song1.mp3"),
+		createTestTrack("2", "Song 2", "/test/song2.mp3"),
+	}
+	service.AddTracks(tracks, true) // Starts playing index 0
+
+	// Subscribe to PlaylistUpdated event
+	var updatedEvent domain.PlaylistUpdatedEvent
+	eventReceived := false
+	bus.Subscribe(domain.EventPlaylistUpdated, func(e domain.Event) {
+		if evt, ok := e.(domain.PlaylistUpdatedEvent); ok {
+			updatedEvent = evt
+			eventReceived = true
+		}
+	})
+
+	// Simulate auto-next event (track finished playing)
+	bus.Publish(domain.NewAutoNextEvent(tracks[0], 0))
+
+	// Verify event was published
+	assert.True(t, eventReceived, "EventPlaylistUpdated should be published after auto-next")
+	assert.Equal(t, 1, updatedEvent.Index, "Event should contain correct index after auto-next")
+	assert.Equal(t, 2, len(updatedEvent.Playlist), "Event should contain full playlist")
 }

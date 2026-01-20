@@ -34,6 +34,11 @@ type UIView interface {
 	// Playlist updates
 	UpdatePlaylistSelection(index int)
 
+	// Playlist window management
+	ShowPlaylistWindow()
+	ClosePlaylistWindow()
+	IsPlaylistWindowOpen() bool
+
 	// Notifications
 	ShowNotification(title, message string)
 }
@@ -55,8 +60,8 @@ type Presenter struct {
 	libraryService    *service.LibraryService
 	preferenceService *service.PreferenceService
 
-	// Event bus for subscriptions
-	eventBus ports.EventBus
+	// Event bus for subscriptions (exported for PlaylistWindow access)
+	EventBus ports.EventBus
 
 	// UI view
 	view UIView
@@ -86,7 +91,7 @@ func NewPresenter(
 		playlistService:   playlistService,
 		libraryService:    libraryService,
 		preferenceService: preferenceService,
-		eventBus:          eventBus,
+		EventBus:          eventBus,
 		view:              view,
 		stopProgressChan:  make(chan bool, 1),
 	}
@@ -129,7 +134,7 @@ func (p *Presenter) subscribeToEvents() {
 	}
 
 	for eventType, handler := range subscriptions {
-		p.eventBus.Subscribe(eventType, handler)
+		p.EventBus.Subscribe(eventType, handler)
 	}
 }
 
@@ -442,6 +447,10 @@ func (p *Presenter) OnFileOpened(filePath string) error {
 	// Add to the playlist and play immediately
 	err = p.playlistService.AddTrack(*track, true)
 	if err != nil {
+		// Silently ignore duplicate errors (user preference)
+		if err == domain.ErrDuplicateTrack {
+			return nil
+		}
 		return err
 	}
 
@@ -473,6 +482,16 @@ func (p *Presenter) OnTrackSelected(trackPath string) error {
 	// PlayTrackByPath returns (index, error)
 	_, err := p.playlistService.PlayTrackByPath(trackPath)
 	return err
+}
+
+// OnPlaylistMenuClicked handles "View Playlist" menu action.
+func (p *Presenter) OnPlaylistMenuClicked() {
+	p.view.ShowPlaylistWindow()
+}
+
+// OnPlaylistTrackSelected handles track selection from playlist window by index.
+func (p *Presenter) OnPlaylistTrackSelected(index int) error {
+	return p.playlistService.PlayTrackAt(index)
 }
 
 // GetQueue returns the current queue.

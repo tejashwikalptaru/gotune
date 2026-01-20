@@ -50,6 +50,9 @@ type MainWindow struct {
 	updatingProgress bool
 	progressMu       sync.Mutex
 
+	// Playlist window (optional)
+	playlistWindow *PlaylistWindow
+
 	// Lifecycle management
 	closeOnce sync.Once
 
@@ -210,7 +213,9 @@ func (w *MainWindow) createMenu() []*fyneapp.Menu {
 	})
 
 	viewPlaylist := fyneapp.NewMenuItem("View Playlist", func() {
-		// TODO: Open playlist window
+		if w.presenter != nil {
+			w.presenter.OnPlaylistMenuClicked()
+		}
 	})
 
 	exitMenu := fyneapp.NewMenuItem("Exit", func() {
@@ -315,6 +320,9 @@ func (w *MainWindow) ShowAndRun() {
 // It's safe to call multiple times (idempotent).
 func (w *MainWindow) Close() {
 	w.closeOnce.Do(func() {
+		// Close playlist window if open
+		w.ClosePlaylistWindow()
+
 		close(w.stopScroll)
 		w.window.Close()
 	})
@@ -457,9 +465,44 @@ func (w *MainWindow) SetProgress(position, duration float64) {
 // UpdatePlaylistSelection updates the selected track in the playlist view.
 func (w *MainWindow) UpdatePlaylistSelection(index int) {
 	fyneapp.Do(func() {
-		// TODO: Update playlist window if it's open
-		// For now, this is a no-op
+		if w.playlistWindow != nil && w.playlistWindow.IsVisible() {
+			w.playlistWindow.SetSelected(index)
+		}
 	})
+}
+
+// ShowPlaylistWindow displays the playlist window.
+func (w *MainWindow) ShowPlaylistWindow() {
+	fyneapp.Do(func() {
+		if w.playlistWindow == nil {
+			w.playlistWindow = NewPlaylistWindow(
+				w.app,
+				w.presenter,
+				w.presenter.EventBus,
+			)
+			// Set callback to clear reference when window is closed
+			w.playlistWindow.SetOnWindowClosed(func() {
+				fyneapp.Do(func() {
+					w.playlistWindow = nil
+				})
+			})
+		}
+		w.playlistWindow.Show()
+	})
+}
+
+// ClosePlaylistWindow closes the playlist window if it's open.
+func (w *MainWindow) ClosePlaylistWindow() {
+	fyneapp.Do(func() {
+		if w.playlistWindow != nil {
+			w.playlistWindow.Close()
+		}
+	})
+}
+
+// IsPlaylistWindowOpen returns whether the playlist window is currently open.
+func (w *MainWindow) IsPlaylistWindowOpen() bool {
+	return w.playlistWindow != nil && w.playlistWindow.IsVisible()
 }
 
 // ShowNotification displays a system notification.

@@ -51,16 +51,33 @@ func NewPlaylistService(
 	return service
 }
 
+// containsFilePath checks if the queue already contains a track with the given file path.
+// Must be called with mutex lock held.
+func (s *PlaylistService) containsFilePath(filePath string) bool {
+	for _, track := range s.queue {
+		if track.FilePath == filePath {
+			return true
+		}
+	}
+	return false
+}
+
 // AddTrack adds a track to the end of the queue.
+// Returns ErrDuplicateTrack if a track with the same FilePath already exists.
 func (s *PlaylistService) AddTrack(track domain.MusicTrack, playImmediately bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Check for duplicates
+	if s.containsFilePath(track.FilePath) {
+		return domain.ErrDuplicateTrack
+	}
 
 	// Add to queue
 	s.queue = append(s.queue, track)
 	newIndex := len(s.queue) - 1
 
-	// Publish event
+	// Publish events
 	s.bus.Publish(domain.NewTrackAddedEvent(track, newIndex))
 	s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
 
@@ -76,7 +93,8 @@ func (s *PlaylistService) AddTrack(track domain.MusicTrack, playImmediately bool
 	return nil
 }
 
-// AddTracks adds multiple tracks to the queue.
+// AddTracks adds multiple tracks to the queue, filtering out any duplicates.
+// Tracks with FilePath that already exists in the queue are silently skipped.
 func (s *PlaylistService) AddTracks(tracks []domain.MusicTrack, playFirst bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -85,20 +103,33 @@ func (s *PlaylistService) AddTracks(tracks []domain.MusicTrack, playFirst bool) 
 		return nil
 	}
 
-	// Add all tracks
-	startIndex := len(s.queue)
-	s.queue = append(s.queue, tracks...)
+	// Filter out duplicate tracks
+	uniqueTracks := make([]domain.MusicTrack, 0, len(tracks))
+	for _, track := range tracks {
+		if !s.containsFilePath(track.FilePath) {
+			uniqueTracks = append(uniqueTracks, track)
+		}
+	}
 
-	// Publish events for each track
-	for i, track := range tracks {
+	// If all tracks were duplicates, return early
+	if len(uniqueTracks) == 0 {
+		return nil
+	}
+
+	// Add unique tracks
+	startIndex := len(s.queue)
+	s.queue = append(s.queue, uniqueTracks...)
+
+	// Publish events for each added track
+	for i, track := range uniqueTracks {
 		s.bus.Publish(domain.NewTrackAddedEvent(track, startIndex+i))
 	}
 	s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
 
 	// Play the first track if requested
-	if playFirst && len(tracks) > 0 {
+	if playFirst && len(uniqueTracks) > 0 {
 		s.currentIndex = startIndex
-		if err := s.playback.LoadTrack(tracks[0], startIndex); err != nil {
+		if err := s.playback.LoadTrack(uniqueTracks[0], startIndex); err != nil {
 			return err
 		}
 		return s.playback.Play()
@@ -170,7 +201,14 @@ func (s *PlaylistService) PlayTrackAt(index int) error {
 		return err
 	}
 
-	return s.playback.Play()
+	if err := s.playback.Play(); err != nil {
+		return err
+	}
+
+	// Publish playlist updated event
+	s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
+
+	return nil
 }
 
 // PlayTrackByPath plays a track from the queue by its file path.
@@ -229,7 +267,14 @@ func (s *PlaylistService) PlayNext() error {
 		return err
 	}
 
-	return s.playback.Play()
+	if err := s.playback.Play(); err != nil {
+		return err
+	}
+
+	// Publish playlist updated event
+	s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
+
+	return nil
 }
 
 // PlayPrevious plays the previous track in the queue.
@@ -254,7 +299,14 @@ func (s *PlaylistService) PlayPrevious() error {
 		return err
 	}
 
-	return s.playback.Play()
+	if err := s.playback.Play(); err != nil {
+		return err
+	}
+
+	// Publish playlist updated event
+	s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
+
+	return nil
 }
 
 // GetQueue returns a copy of the current queue.
@@ -415,6 +467,10 @@ func (s *PlaylistService) handleAutoNext(event domain.Event) {
 	s.mu.Unlock()
 	s.playback.LoadTrack(track, s.currentIndex)
 	s.playback.Play()
+
+	// Publish playlist updated event
+	s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
+
 	s.mu.Lock()
 }
 

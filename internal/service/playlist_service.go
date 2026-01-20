@@ -77,9 +77,8 @@ func (s *PlaylistService) AddTrack(track domain.MusicTrack, playImmediately bool
 	s.queue = append(s.queue, track)
 	newIndex := len(s.queue) - 1
 
-	// Publish events
+	// Publish TrackAdded event
 	s.bus.Publish(domain.NewTrackAddedEvent(track, newIndex))
-	s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
 
 	// Play immediately if requested
 	if playImmediately {
@@ -87,10 +86,17 @@ func (s *PlaylistService) AddTrack(track domain.MusicTrack, playImmediately bool
 		if err := s.playback.LoadTrack(track, newIndex); err != nil {
 			return err
 		}
-		return s.playback.Play()
+		if err := s.playback.Play(); err != nil {
+			return err
+		}
+		// Publish playlist updated event with NEW index
+		s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
+		return nil
+	} else {
+		// Not playing immediately, publish with unchanged index
+		s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
+		return nil
 	}
-
-	return nil
 }
 
 // AddTracks adds multiple tracks to the queue, filtering out any duplicates.
@@ -124,7 +130,6 @@ func (s *PlaylistService) AddTracks(tracks []domain.MusicTrack, playFirst bool) 
 	for i, track := range uniqueTracks {
 		s.bus.Publish(domain.NewTrackAddedEvent(track, startIndex+i))
 	}
-	s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
 
 	// Play the first track if requested
 	if playFirst && len(uniqueTracks) > 0 {
@@ -132,10 +137,17 @@ func (s *PlaylistService) AddTracks(tracks []domain.MusicTrack, playFirst bool) 
 		if err := s.playback.LoadTrack(uniqueTracks[0], startIndex); err != nil {
 			return err
 		}
-		return s.playback.Play()
+		if err := s.playback.Play(); err != nil {
+			return err
+		}
+		// Publish playlist updated event with NEW index
+		s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
+		return nil
+	} else {
+		// Not playing, publish with unchanged index
+		s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
+		return nil
 	}
-
-	return nil
 }
 
 // RemoveTrack removes a track at the specified index.

@@ -199,7 +199,7 @@ func (a *Application) Shutdown() error {
 	// Publish application stopping event
 	// a.eventBus.Publish(domain.NewApplicationStoppingEvent())
 
-	// Save current state
+	// Save the current state
 	if err := a.saveState(); err != nil {
 		fmt.Printf("Warning: Failed to save state: %v\n", err)
 	}

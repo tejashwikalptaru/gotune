@@ -47,7 +47,7 @@ func main() {
 
 	// Run application (blocks until the window closed)
 	if err := application.Run(); err != nil {
-		log.Fatalf("Application error: %v", err)
+		log.Printf("Application error: %v", err)
 	}
 
 	fmt.Println("Application exited cleanly")

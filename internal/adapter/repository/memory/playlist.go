@@ -37,7 +37,7 @@ func (r *PlaylistRepository) Save(playlist *domain.Playlist) error {
 		return domain.NewServiceError("PlaylistRepository", "Save", "failed to marshal playlist", err)
 	}
 
-	// Save to preferences with key "playlist.<id>"
+	// Save to preferences with the key "playlist.<id>"
 	key := "playlist." + playlist.ID
 	r.prefs.SetString(key, string(data))
 

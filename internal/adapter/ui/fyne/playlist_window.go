@@ -3,6 +3,7 @@ package fyne
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	fyneapp "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -160,9 +161,10 @@ func (w *PlaylistWindow) findActualIndex(filteredIndex int) int {
 
 	selectedTrack := w.data[filteredIndex]
 
-	// Find this track in the main collection
+	// Find this track in the main collection by ID (not FilePath!)
+	// This ensures correct index even when duplicate files exist in playlist
 	for i, track := range w.mainCollection {
-		if track.FilePath == selectedTrack.FilePath {
+		if track.ID == selectedTrack.ID {
 			return i
 		}
 	}
@@ -185,9 +187,10 @@ func (w *PlaylistWindow) findFilteredIndex(mainIndex int) int {
 	// Find the track from main collection
 	targetTrack := w.mainCollection[mainIndex]
 
-	// Search for it in the filtered data by comparing file paths
+	// Search for it in the filtered data by ID (not FilePath!)
+	// This ensures correct index even when duplicate files exist in playlist
 	for i, track := range w.data {
-		if track.FilePath == targetTrack.FilePath {
+		if track.ID == targetTrack.ID {
 			return i
 		}
 	}
@@ -234,18 +237,23 @@ func (w *PlaylistWindow) onPlaylistUpdated(event domain.Event) {
 		w.updateWindowTitle()
 		w.list.Refresh()
 
-		// Highlight current track (map from main collection index to filtered index)
-		if w.currentIndex >= 0 {
-			filteredIndex := w.findFilteredIndex(w.currentIndex)
-			if filteredIndex >= 0 {
-				w.list.Select(filteredIndex)
-			} else {
-				// Current track is filtered out by search - unselect
-				w.list.UnselectAll()
-			}
-		} else {
-			w.list.UnselectAll()
-		}
+		// Highlight current track AFTER refresh completes
+		// Use a small delay to ensure Refresh() has processed
+		time.AfterFunc(10*time.Millisecond, func() {
+			fyneapp.Do(func() {
+				if w.currentIndex >= 0 {
+					filteredIndex := w.findFilteredIndex(w.currentIndex)
+					if filteredIndex >= 0 {
+						w.list.Select(filteredIndex)
+					} else {
+						// Current track is filtered out by search - unselect
+						w.list.UnselectAll()
+					}
+				} else {
+					w.list.UnselectAll()
+				}
+			})
+		})
 	})
 }
 

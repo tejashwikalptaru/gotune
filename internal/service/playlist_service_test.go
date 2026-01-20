@@ -116,7 +116,7 @@ func (m *mockHistoryRepository) Clear() error {
 // Helper to create a test playlist service
 func newTestPlaylistService() (*PlaylistService, *PlaybackService, *eventbus.SyncEventBus) {
 	engine := mock.NewEngine()
-	engine.Initialize(-1, 44100, 0)
+	_ = engine.Initialize(-1, 44100, 0)
 
 	bus := eventbus.NewSyncEventBus()
 	playback := NewPlaybackService(engine, bus)
@@ -130,7 +130,11 @@ func newTestPlaylistService() (*PlaylistService, *PlaybackService, *eventbus.Syn
 
 func TestPlaylistService_AddTrack(t *testing.T) {
 	service, _, bus := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	track := createTestTrack("1", "Song 1", "/test/song1.mp3")
 
@@ -157,7 +161,11 @@ func TestPlaylistService_AddTrack(t *testing.T) {
 
 func TestPlaylistService_AddTrack_PlayImmediately(t *testing.T) {
 	service, playback, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	track := createTestTrack("1", "Song 1", "/test/song1.mp3")
 
@@ -178,7 +186,11 @@ func TestPlaylistService_AddTrack_PlayImmediately(t *testing.T) {
 
 func TestPlaylistService_AddTrack_ReplaceCurrentlyPlaying(t *testing.T) {
 	service, playback, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	trackA := createTestTrack("A", "Song A", "/test/songA.mp3")
 	trackB := createTestTrack("B", "Song B", "/test/songB.mp3")
@@ -210,7 +222,11 @@ func TestPlaylistService_AddTrack_ReplaceCurrentlyPlaying(t *testing.T) {
 
 func TestPlaylistService_AddTracks(t *testing.T) {
 	service, _, bus := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	tracks := []domain.MusicTrack{
 		createTestTrack("1", "Song 1", "/test/song1.mp3"),
@@ -235,7 +251,11 @@ func TestPlaylistService_AddTracks(t *testing.T) {
 
 func TestPlaylistService_AddTracks_PlayFirst(t *testing.T) {
 	service, playback, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	tracks := []domain.MusicTrack{
 		createTestTrack("1", "Song 1", "/test/song1.mp3"),
@@ -260,7 +280,11 @@ func TestPlaylistService_AddTracks_PlayFirst(t *testing.T) {
 
 func TestPlaylistService_RemoveTrack(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add some tracks
 	tracks := []domain.MusicTrack{
@@ -268,7 +292,9 @@ func TestPlaylistService_RemoveTrack(t *testing.T) {
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 		createTestTrack("3", "Song 3", "/test/song3.mp3"),
 	}
-	service.AddTracks(tracks, false)
+	if err := service.AddTracks(tracks, false); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	}
 
 	// Remove the middle track
 	err := service.RemoveTrack(1)
@@ -283,14 +309,20 @@ func TestPlaylistService_RemoveTrack(t *testing.T) {
 
 func TestPlaylistService_RemoveTrack_CurrentlyPlaying(t *testing.T) {
 	service, playback, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add and play tracks
 	tracks := []domain.MusicTrack{
 		createTestTrack("1", "Song 1", "/test/song1.mp3"),
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 	}
-	service.AddTracks(tracks, true)
+	if err := service.AddTracks(tracks, true); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	}
 
 	// Remove the currently playing track (index 0)
 	err := service.RemoveTrack(0)
@@ -304,14 +336,20 @@ func TestPlaylistService_RemoveTrack_CurrentlyPlaying(t *testing.T) {
 
 func TestPlaylistService_ClearQueue(t *testing.T) {
 	service, playback, bus := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add tracks
 	tracks := []domain.MusicTrack{
 		createTestTrack("1", "Song 1", "/test/song1.mp3"),
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 	}
-	service.AddTracks(tracks, true)
+	if err := service.AddTracks(tracks, true); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	}
 
 	// Subscribe to queue changed event
 	var queueEvent domain.QueueChangedEvent
@@ -335,7 +373,11 @@ func TestPlaylistService_ClearQueue(t *testing.T) {
 
 func TestPlaylistService_PlayTrackAt(t *testing.T) {
 	service, playback, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add tracks
 	tracks := []domain.MusicTrack{
@@ -343,7 +385,9 @@ func TestPlaylistService_PlayTrackAt(t *testing.T) {
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 		createTestTrack("3", "Song 3", "/test/song3.mp3"),
 	}
-	service.AddTracks(tracks, false)
+	if err := service.AddTracks(tracks, false); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	}
 
 	// Play track at index 1
 	err := service.PlayTrackAt(1)
@@ -359,14 +403,20 @@ func TestPlaylistService_PlayTrackAt(t *testing.T) {
 
 func TestPlaylistService_PlayTrackAt_InvalidIndex(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Try to play from an empty queue
 	err := service.PlayTrackAt(0)
 	assert.Equal(t, domain.ErrTrackNotFound, err)
 
 	// Add tracks
-	service.AddTrack(createTestTrack("1", "Song 1", "/test/song1.mp3"), false)
+	if err := service.AddTrack(createTestTrack("1", "Song 1", "/test/song1.mp3"), false); err != nil {
+		t.Fatalf("Failed to add track: %v", err)
+	}
 
 	// Try to play an invalid index
 	err = service.PlayTrackAt(5)
@@ -378,7 +428,11 @@ func TestPlaylistService_PlayTrackAt_InvalidIndex(t *testing.T) {
 
 func TestPlaylistService_PlayTrackByPath(t *testing.T) {
 	service, playback, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add tracks
 	tracks := []domain.MusicTrack{
@@ -386,7 +440,9 @@ func TestPlaylistService_PlayTrackByPath(t *testing.T) {
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 		createTestTrack("3", "Song 3", "/test/song3.mp3"),
 	}
-	service.AddTracks(tracks, false)
+	if err := service.AddTracks(tracks, false); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	}
 
 	// Play by path
 	index, err := service.PlayTrackByPath("/test/song3.mp3")
@@ -402,9 +458,15 @@ func TestPlaylistService_PlayTrackByPath(t *testing.T) {
 
 func TestPlaylistService_PlayTrackByPath_NotFound(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
-	service.AddTrack(createTestTrack("1", "Song 1", "/test/song1.mp3"), false)
+	if err := service.AddTrack(createTestTrack("1", "Song 1", "/test/song1.mp3"), false); err != nil {
+		t.Fatalf("Failed to add track: %v", err)
+	}
 
 	// Try to play a non-existent path
 	index, err := service.PlayTrackByPath("/test/nonexistent.mp3")
@@ -414,7 +476,11 @@ func TestPlaylistService_PlayTrackByPath_NotFound(t *testing.T) {
 
 func TestPlaylistService_PlayNext(t *testing.T) {
 	service, playback, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add tracks
 	tracks := []domain.MusicTrack{
@@ -422,7 +488,9 @@ func TestPlaylistService_PlayNext(t *testing.T) {
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 		createTestTrack("3", "Song 3", "/test/song3.mp3"),
 	}
-	service.AddTracks(tracks, true) // Start playing first
+	if err := service.AddTracks(tracks, true); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	} // Start playing first
 
 	// Play next
 	err := service.PlayNext()
@@ -436,10 +504,16 @@ func TestPlaylistService_PlayNext(t *testing.T) {
 
 func TestPlaylistService_PlayNext_EndOfQueue(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add track and play
-	service.AddTrack(createTestTrack("1", "Song 1", "/test/song1.mp3"), true)
+	if err := service.AddTrack(createTestTrack("1", "Song 1", "/test/song1.mp3"), true); err != nil {
+		t.Fatalf("Failed to add track: %v", err)
+	}
 
 	// Try to play next (at the end of queue)
 	err := service.PlayNext()
@@ -448,7 +522,11 @@ func TestPlaylistService_PlayNext_EndOfQueue(t *testing.T) {
 
 func TestPlaylistService_PlayNext_EmptyQueue(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Try to play next on the empty queue
 	err := service.PlayNext()
@@ -457,7 +535,11 @@ func TestPlaylistService_PlayNext_EmptyQueue(t *testing.T) {
 
 func TestPlaylistService_PlayPrevious(t *testing.T) {
 	service, playback, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add tracks and play the second one
 	tracks := []domain.MusicTrack{
@@ -465,8 +547,12 @@ func TestPlaylistService_PlayPrevious(t *testing.T) {
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 		createTestTrack("3", "Song 3", "/test/song3.mp3"),
 	}
-	service.AddTracks(tracks, false)
-	service.PlayTrackAt(1)
+	if err := service.AddTracks(tracks, false); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	}
+	if err := service.PlayTrackAt(1); err != nil {
+		t.Fatalf("Failed to play track: %v", err)
+	}
 
 	// Play previous
 	err := service.PlayPrevious()
@@ -480,10 +566,16 @@ func TestPlaylistService_PlayPrevious(t *testing.T) {
 
 func TestPlaylistService_PlayPrevious_StartOfQueue(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add track and play
-	service.AddTrack(createTestTrack("1", "Song 1", "/test/song1.mp3"), true)
+	if err := service.AddTrack(createTestTrack("1", "Song 1", "/test/song1.mp3"), true); err != nil {
+		t.Fatalf("Failed to add track: %v", err)
+	}
 
 	// Try to play previous (at start of queue)
 	err := service.PlayPrevious()
@@ -492,14 +584,20 @@ func TestPlaylistService_PlayPrevious_StartOfQueue(t *testing.T) {
 
 func TestPlaylistService_GetQueue(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add tracks
 	tracks := []domain.MusicTrack{
 		createTestTrack("1", "Song 1", "/test/song1.mp3"),
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 	}
-	service.AddTracks(tracks, false)
+	if err := service.AddTracks(tracks, false); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	}
 
 	// Get queue
 	queue := service.GetQueue()
@@ -515,7 +613,9 @@ func TestPlaylistService_GetQueue(t *testing.T) {
 
 func TestPlaylistService_SaveAndLoadQueue(t *testing.T) {
 	engine := mock.NewEngine()
-	engine.Initialize(-1, 44100, 0)
+	if err := engine.Initialize(-1, 44100, 0); err != nil {
+		t.Fatalf("Failed to initialize engine: %v", err)
+	}
 
 	bus := eventbus.NewSyncEventBus()
 	playback := NewPlaybackService(engine, bus)
@@ -530,20 +630,30 @@ func TestPlaylistService_SaveAndLoadQueue(t *testing.T) {
 		createTestTrack("1", "Song 1", "/test/song1.mp3"),
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 	}
-	service.AddTracks(tracks, false)
-	service.PlayTrackAt(1)
+	if err := service.AddTracks(tracks, false); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	}
+	if err := service.PlayTrackAt(1); err != nil {
+		t.Fatalf("Failed to play track: %v", err)
+	}
 
 	// Save queue
 	err := service.SaveQueue()
 	require.NoError(t, err)
 
 	// Shutdown first service
-	service.Shutdown()
+	if err := service.Shutdown(); err != nil {
+		t.Fatalf("Failed to shutdown service: %v", err)
+	}
 
 	// Create a new service instance with SAME repositories
 	playback2 := NewPlaybackService(engine, bus)
 	service2 := NewPlaylistService(playback2, plRepo, histRepo, bus)
-	defer service2.Shutdown()
+	defer func() {
+		if err := service2.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	err = service2.LoadQueue()
 	require.NoError(t, err)
@@ -558,7 +668,11 @@ func TestPlaylistService_SaveAndLoadQueue(t *testing.T) {
 
 func TestPlaylistService_MoveTrack(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add tracks
 	tracks := []domain.MusicTrack{
@@ -566,7 +680,9 @@ func TestPlaylistService_MoveTrack(t *testing.T) {
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 		createTestTrack("3", "Song 3", "/test/song3.mp3"),
 	}
-	service.AddTracks(tracks, false)
+	if err := service.AddTracks(tracks, false); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	}
 
 	// Move track from index 0 to index 2
 	err := service.MoveTrack(0, 2)
@@ -581,9 +697,15 @@ func TestPlaylistService_MoveTrack(t *testing.T) {
 
 func TestPlaylistService_MoveTrack_InvalidIndices(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
-	service.AddTrack(createTestTrack("1", "Song 1", "/test/song1.mp3"), false)
+	if err := service.AddTrack(createTestTrack("1", "Song 1", "/test/song1.mp3"), false); err != nil {
+		t.Fatalf("Failed to add track: %v", err)
+	}
 
 	// Invalid from index
 	err := service.MoveTrack(-1, 0)
@@ -596,14 +718,20 @@ func TestPlaylistService_MoveTrack_InvalidIndices(t *testing.T) {
 
 func TestPlaylistService_AutoNext(t *testing.T) {
 	service, playback, bus := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add tracks
 	tracks := []domain.MusicTrack{
 		createTestTrack("1", "Song 1", "/test/song1.mp3"),
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 	}
-	service.AddTracks(tracks, true) // Starts playing index 0
+	if err := service.AddTracks(tracks, true); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	} // Starts playing index 0
 
 	// Initial state
 	assert.Equal(t, 0, service.GetCurrentIndex())
@@ -630,14 +758,18 @@ func TestPlaylistService_AutoNext(t *testing.T) {
 
 func TestPlaylistService_ConcurrentAddTracks(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add tracks concurrently with unique file paths
 	done := make(chan struct{})
 	for i := 0; i < 10; i++ {
 		go func(index int) {
 			track := createTestTrack(string(rune('0'+index)), "Song", fmt.Sprintf("/test/song%d.mp3", index))
-			service.AddTrack(track, false)
+			_ = service.AddTrack(track, false)
 			done <- struct{}{}
 		}(i)
 	}
@@ -653,19 +785,25 @@ func TestPlaylistService_ConcurrentAddTracks(t *testing.T) {
 
 func TestPlaylistService_ConcurrentRemove(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add many tracks with unique file paths
 	for i := 0; i < 20; i++ {
 		track := createTestTrack(string(rune('0'+i)), "Song", fmt.Sprintf("/test/song%d.mp3", i))
-		service.AddTrack(track, false)
+		if err := service.AddTrack(track, false); err != nil {
+			t.Fatalf("Failed to add track: %v", err)
+		}
 	}
 
 	// Remove tracks concurrently
 	done := make(chan struct{})
 	for i := 0; i < 10; i++ {
 		go func() {
-			service.RemoveTrack(0) // Always remove first
+			_ = service.RemoveTrack(0) // Always remove first
 			done <- struct{}{}
 		}()
 	}
@@ -687,7 +825,9 @@ func TestPlaylistService_Shutdown(t *testing.T) {
 		createTestTrack("1", "Song 1", "/test/song1.mp3"),
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 	}
-	service.AddTracks(tracks, false)
+	if err := service.AddTracks(tracks, false); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	}
 
 	// Shutdown
 	err := service.Shutdown()
@@ -698,7 +838,11 @@ func TestPlaylistService_Shutdown(t *testing.T) {
 
 func TestPlaylistService_AddTrack_Duplicate(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	track := createTestTrack("1", "Song 1", "/test/song1.mp3")
 
@@ -715,7 +859,11 @@ func TestPlaylistService_AddTrack_Duplicate(t *testing.T) {
 
 func TestPlaylistService_AddTrack_Duplicate_DifferentID_SamePath(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	track1 := createTestTrack("1", "Song 1", "/test/song.mp3")
 	track2 := createTestTrack("2", "Song 2", "/test/song.mp3") // Different ID, same path
@@ -732,7 +880,11 @@ func TestPlaylistService_AddTrack_Duplicate_DifferentID_SamePath(t *testing.T) {
 
 func TestPlaylistService_AddTracks_FilterDuplicates(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	track1 := createTestTrack("1", "Song 1", "/test/song1.mp3")
 	track2 := createTestTrack("2", "Song 2", "/test/song2.mp3")
@@ -759,7 +911,11 @@ func TestPlaylistService_AddTracks_FilterDuplicates(t *testing.T) {
 
 func TestPlaylistService_AddTracks_AllDuplicates(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	track := createTestTrack("1", "Song 1", "/test/song1.mp3")
 
@@ -776,7 +932,11 @@ func TestPlaylistService_AddTracks_AllDuplicates(t *testing.T) {
 
 func TestPlaylistService_AddTracks_PartialDuplicates(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	track1 := createTestTrack("1", "Song 1", "/test/song1.mp3")
 	track2 := createTestTrack("2", "Song 2", "/test/song2.mp3")
@@ -806,7 +966,11 @@ func TestPlaylistService_AddTracks_PartialDuplicates(t *testing.T) {
 
 func TestPlaylistService_ConcurrentDuplicateDetection(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	track := createTestTrack("1", "Song 1", "/test/song1.mp3")
 
@@ -835,7 +999,11 @@ func TestPlaylistService_ConcurrentDuplicateDetection(t *testing.T) {
 
 func TestPlaylistService_Duplicate_PlayImmediately(t *testing.T) {
 	service, _, _ := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	track := createTestTrack("1", "Song 1", "/test/song1.mp3")
 
@@ -856,7 +1024,11 @@ func TestPlaylistService_Duplicate_PlayImmediately(t *testing.T) {
 
 func TestPlaylistService_PlayTrackAt_PublishesEvent(t *testing.T) {
 	service, _, bus := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add tracks
 	tracks := []domain.MusicTrack{
@@ -864,7 +1036,9 @@ func TestPlaylistService_PlayTrackAt_PublishesEvent(t *testing.T) {
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 		createTestTrack("3", "Song 3", "/test/song3.mp3"),
 	}
-	service.AddTracks(tracks, false)
+	if err := service.AddTracks(tracks, false); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	}
 
 	// Subscribe to PlaylistUpdated event
 	var updatedEvent domain.PlaylistUpdatedEvent
@@ -888,7 +1062,11 @@ func TestPlaylistService_PlayTrackAt_PublishesEvent(t *testing.T) {
 
 func TestPlaylistService_PlayNext_PublishesEvent(t *testing.T) {
 	service, _, bus := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add tracks
 	tracks := []domain.MusicTrack{
@@ -896,7 +1074,9 @@ func TestPlaylistService_PlayNext_PublishesEvent(t *testing.T) {
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 		createTestTrack("3", "Song 3", "/test/song3.mp3"),
 	}
-	service.AddTracks(tracks, true) // Start playing first
+	if err := service.AddTracks(tracks, true); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	} // Start playing first
 
 	// Subscribe to PlaylistUpdated event
 	var updatedEvent domain.PlaylistUpdatedEvent
@@ -920,7 +1100,11 @@ func TestPlaylistService_PlayNext_PublishesEvent(t *testing.T) {
 
 func TestPlaylistService_PlayPrevious_PublishesEvent(t *testing.T) {
 	service, _, bus := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add tracks
 	tracks := []domain.MusicTrack{
@@ -928,10 +1112,14 @@ func TestPlaylistService_PlayPrevious_PublishesEvent(t *testing.T) {
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 		createTestTrack("3", "Song 3", "/test/song3.mp3"),
 	}
-	service.AddTracks(tracks, true) // Start playing first
+	if err := service.AddTracks(tracks, true); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	} // Start playing first
 
 	// Move to second track
-	service.PlayNext()
+	if err := service.PlayNext(); err != nil {
+		t.Fatalf("Failed to play next: %v", err)
+	}
 
 	// Subscribe to PlaylistUpdated event
 	var updatedEvent domain.PlaylistUpdatedEvent
@@ -955,14 +1143,20 @@ func TestPlaylistService_PlayPrevious_PublishesEvent(t *testing.T) {
 
 func TestPlaylistService_AutoNext_PublishesEvent(t *testing.T) {
 	service, _, bus := newTestPlaylistService()
-	defer service.Shutdown()
+	defer func() {
+		if err := service.Shutdown(); err != nil {
+			t.Errorf("Failed to shutdown service: %v", err)
+		}
+	}()
 
 	// Add tracks
 	tracks := []domain.MusicTrack{
 		createTestTrack("1", "Song 1", "/test/song1.mp3"),
 		createTestTrack("2", "Song 2", "/test/song2.mp3"),
 	}
-	service.AddTracks(tracks, true) // Starts playing index 0
+	if err := service.AddTracks(tracks, true); err != nil {
+		t.Fatalf("Failed to add tracks: %v", err)
+	} // Starts playing index 0
 
 	// Subscribe to PlaylistUpdated event
 	var updatedEvent domain.PlaylistUpdatedEvent

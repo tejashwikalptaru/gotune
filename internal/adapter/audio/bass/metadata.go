@@ -2,10 +2,13 @@
 package bass
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/dhowden/tag"
 	"github.com/tejashwikalptaru/gotune/internal/domain"
@@ -45,7 +48,7 @@ func extractMetadata(filePath string) (*domain.MusicTrack, error) {
 
 	// Create a base track
 	track := &domain.MusicTrack{
-		ID:         generateTrackID(filePath),
+		ID:         generateTrackID(),
 		FilePath:   filePath,
 		Title:      filename,
 		FileFormat: ext,
@@ -162,11 +165,15 @@ func extractAudioMetadata(track *domain.MusicTrack) (*domain.MusicTrack, error) 
 	return track, nil
 }
 
-// generateTrackID generates a unique ID for a track based on its file path.
-func generateTrackID(filePath string) string {
-	// Simple ID generation based on file path
-	// In a real implementation, you might want to use a UUID or hash
-	return fmt.Sprintf("track-%s", filepath.Base(filePath))
+// generateTrackID generates a unique ID for a track
+func generateTrackID() string {
+	// Generate a random 8-byte hex string for uniqueness
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		// If random generation fails, fall back to a timestamp-based ID
+		b = []byte(fmt.Sprintf("%d", time.Now().UnixNano()))
+	}
+	return fmt.Sprintf("track-%s", hex.EncodeToString(b))
 }
 
 // SupportedFormats returns a list of supported audio format extensions.

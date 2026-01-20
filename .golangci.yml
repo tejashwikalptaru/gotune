@@ -51,6 +51,10 @@ linters:
       - third_party$
       - builtin$
       - examples$
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0

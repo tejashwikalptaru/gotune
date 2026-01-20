@@ -302,7 +302,11 @@ func TestBassEngine_Volume(t *testing.T) {
 
 	handle, err := engine.Load(testFile)
 	require.NoError(t, err)
-	defer engine.Unload(handle)
+	defer func() {
+		if err := engine.Unload(handle); err != nil {
+			t.Errorf("Error during engine unload: %v", err)
+		}
+	}()
 
 	// Set volume to 0.5
 	err = engine.SetVolume(handle, 0.5)
@@ -428,7 +432,11 @@ func TestBassEngine_Seek(t *testing.T) {
 
 	handle, err := engine.Load(testFile)
 	require.NoError(t, err)
-	defer engine.Unload(handle)
+	defer func() {
+		if err := engine.Unload(handle); err != nil {
+			t.Errorf("Error during engine unload: %v", err)
+		}
+	}()
 
 	duration, err := engine.Duration(handle)
 	require.NoError(t, err)
@@ -458,14 +466,22 @@ func TestBassEngine_SeekInvalidPosition(t *testing.T) {
 	}
 
 	engine := NewEngine()
-	defer engine.Shutdown()
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	err := engine.Initialize(-1, 44100, 0)
 	require.NoError(t, err)
 
 	handle, err := engine.Load(testFile)
 	require.NoError(t, err)
-	defer engine.Unload(handle)
+	defer func() {
+		if err := engine.Unload(handle); err != nil {
+			t.Errorf("Error during engine unload: %v", err)
+		}
+	}()
 
 	duration, err := engine.Duration(handle)
 	require.NoError(t, err)
@@ -525,7 +541,11 @@ func TestBassEngine_MultipleTracksLoaded(t *testing.T) {
 	}
 
 	engine := NewEngine()
-	defer engine.Shutdown()
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	err := engine.Initialize(-1, 44100, 0)
 	require.NoError(t, err)
@@ -606,7 +626,11 @@ func TestBassEngine_ConcurrentLoad(t *testing.T) {
 	}
 
 	engine := NewEngine()
-	defer engine.Shutdown()
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	err := engine.Initialize(-1, 44100, 0)
 	require.NoError(t, err)
@@ -638,7 +662,9 @@ func TestBassEngine_ConcurrentLoad(t *testing.T) {
 	// Cleanup
 	for i := 0; i < numGoroutines; i++ {
 		if handles[i] != domain.InvalidTrackHandle {
-			engine.Unload(handles[i])
+			if err := engine.Unload(handles[i]); err != nil {
+				t.Errorf("Error during engine unload: %v", err)
+			}
 		}
 	}
 }
@@ -650,7 +676,11 @@ func TestBassEngine_ConcurrentPlayback(t *testing.T) {
 	}
 
 	engine := NewEngine()
-	defer engine.Shutdown()
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	err := engine.Initialize(-1, 44100, 0)
 	require.NoError(t, err)
@@ -667,9 +697,9 @@ func TestBassEngine_ConcurrentPlayback(t *testing.T) {
 	done := make(chan struct{})
 	for i := 0; i < numTracks; i++ {
 		go func(handle domain.TrackHandle) {
-			engine.Play(handle)
+			_ = engine.Play(handle)
 			time.Sleep(50 * time.Millisecond)
-			engine.Pause(handle)
+			_ = engine.Pause(handle)
 			done <- struct{}{}
 		}(handles[i])
 	}
@@ -688,6 +718,8 @@ func TestBassEngine_ConcurrentPlayback(t *testing.T) {
 
 	// Cleanup
 	for i := 0; i < numTracks; i++ {
-		engine.Unload(handles[i])
+		if err := engine.Unload(handles[i]); err != nil {
+			t.Errorf("Error during engine unload: %v", err)
+		}
 	}
 }

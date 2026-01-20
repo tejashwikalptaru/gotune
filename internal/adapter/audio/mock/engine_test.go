@@ -65,7 +65,10 @@ func TestShutdown(t *testing.T) {
 	}
 
 	// Load a track
-	handle, _ := engine.Load("/path/to/test.mp3")
+	handle, err := engine.Load("/path/to/test.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
 
 	if engine.GetLoadedTracks() != 1 {
 		t.Error("Expected 1 loaded track before shutdown")
@@ -95,8 +98,12 @@ func TestShutdown(t *testing.T) {
 // TestLoad tests loading tracks.
 func TestLoad(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	handle, err := engine.Load("/path/to/test.mp3")
 	if err != nil {
@@ -115,12 +122,25 @@ func TestLoad(t *testing.T) {
 // TestLoadMultipleTracks tests loading multiple tracks.
 func TestLoadMultipleTracks(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
-	handle1, _ := engine.Load("/path/to/test1.mp3")
-	handle2, _ := engine.Load("/path/to/test2.mp3")
-	handle3, _ := engine.Load("/path/to/test3.mp3")
+	handle1, err := engine.Load("/path/to/test1.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	handle2, err := engine.Load("/path/to/test2.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	handle3, err := engine.Load("/path/to/test3.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
 
 	if handle1 == handle2 || handle1 == handle3 || handle2 == handle3 {
 		t.Error("Handles should be unique")
@@ -144,12 +164,19 @@ func TestLoadWithoutInitialize(t *testing.T) {
 // TestUnload tests unloading tracks.
 func TestUnload(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
-	handle, _ := engine.Load("/path/to/test.mp3")
+	handle, err := engine.Load("/path/to/test.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
 
-	err := engine.Unload(handle)
+	err = engine.Unload(handle)
 	if err != nil {
 		t.Errorf("Unload failed: %v", err)
 	}
@@ -168,17 +195,27 @@ func TestUnload(t *testing.T) {
 // TestPlay tests starting playback.
 func TestPlay(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
-	handle, _ := engine.Load("/path/to/test.mp3")
+	handle, err := engine.Load("/path/to/test.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
 
-	err := engine.Play(handle)
+	err = engine.Play(handle)
 	if err != nil {
 		t.Errorf("Play failed: %v", err)
 	}
 
-	status, _ := engine.Status(handle)
+	status, err := engine.Status(handle)
+	if err != nil {
+		t.Fatalf("Status failed: %v", err)
+	}
 	if status != domain.StatusPlaying {
 		t.Errorf("Expected StatusPlaying, got %v", status)
 	}
@@ -187,18 +224,28 @@ func TestPlay(t *testing.T) {
 // TestPause tests pausing playback.
 func TestPause(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
-	handle, _ := engine.Load("/path/to/test.mp3")
-	engine.Play(handle)
+	handle, err := engine.Load("/path/to/test.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	_ = engine.Play(handle)
 
-	err := engine.Pause(handle)
+	err = engine.Pause(handle)
 	if err != nil {
 		t.Errorf("Pause failed: %v", err)
 	}
 
-	status, _ := engine.Status(handle)
+	status, err := engine.Status(handle)
+	if err != nil {
+		t.Fatalf("Status failed: %v", err)
+	}
 	if status != domain.StatusPaused {
 		t.Errorf("Expected StatusPaused, got %v", status)
 	}
@@ -207,13 +254,20 @@ func TestPause(t *testing.T) {
 // TestStop tests stopping playback.
 func TestStop(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
-	handle, _ := engine.Load("/path/to/test.mp3")
-	engine.Play(handle)
+	handle, err := engine.Load("/path/to/test.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	_ = engine.Play(handle)
 
-	err := engine.Stop(handle)
+	err = engine.Stop(handle)
 	if err != nil {
 		t.Errorf("Stop failed: %v", err)
 	}
@@ -233,10 +287,17 @@ func TestStop(t *testing.T) {
 // TestDuration tests getting track duration.
 func TestDuration(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
-	handle, _ := engine.Load("/path/to/test.mp3")
+	handle, err := engine.Load("/path/to/test.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
 
 	duration, err := engine.Duration(handle)
 	if err != nil {
@@ -251,10 +312,17 @@ func TestDuration(t *testing.T) {
 // TestPosition tests getting and setting position.
 func TestPosition(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
-	handle, _ := engine.Load("/path/to/test.mp3")
+	handle, err := engine.Load("/path/to/test.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
 
 	// Initial position should be 0
 	pos, err := engine.Position(handle)
@@ -272,7 +340,10 @@ func TestPosition(t *testing.T) {
 	}
 
 	// Check a new position
-	pos, _ = engine.Position(handle)
+	pos, err = engine.Position(handle)
+	if err != nil {
+		t.Fatalf("Position failed: %v", err)
+	}
 	if pos != time.Minute {
 		t.Errorf("Expected position 1m, got %v", pos)
 	}
@@ -281,13 +352,20 @@ func TestPosition(t *testing.T) {
 // TestSeekInvalidPosition tests seeking invalid positions.
 func TestSeekInvalidPosition(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
-	handle, _ := engine.Load("/path/to/test.mp3")
+	handle, err := engine.Load("/path/to/test.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
 
 	// Seek to negative position
-	err := engine.Seek(handle, -1*time.Second)
+	err = engine.Seek(handle, -1*time.Second)
 	if !errors.Is(err, domain.ErrInvalidPosition) {
 		t.Errorf("Expected ErrInvalidPosition for negative position, got %v", err)
 	}
@@ -302,10 +380,17 @@ func TestSeekInvalidPosition(t *testing.T) {
 // TestVolume tests volume control.
 func TestVolume(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
-	handle, _ := engine.Load("/path/to/test.mp3")
+	handle, err := engine.Load("/path/to/test.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
 
 	// The default volume should be 1.0
 	vol, err := engine.GetVolume(handle)
@@ -323,7 +408,10 @@ func TestVolume(t *testing.T) {
 	}
 
 	// Check new volume
-	vol, _ = engine.GetVolume(handle)
+	vol, err = engine.GetVolume(handle)
+	if err != nil {
+		t.Fatalf("GetVolume failed: %v", err)
+	}
 	if vol != 0.5 {
 		t.Errorf("Expected volume 0.5, got %v", vol)
 	}
@@ -332,13 +420,20 @@ func TestVolume(t *testing.T) {
 // TestVolumeInvalidRange tests setting volume out of range.
 func TestVolumeInvalidRange(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
-	handle, _ := engine.Load("/path/to/test.mp3")
+	handle, err := engine.Load("/path/to/test.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
 
 	// Volume too low
-	err := engine.SetVolume(handle, -0.1)
+	err = engine.SetVolume(handle, -0.1)
 	if !errors.Is(err, domain.ErrInvalidVolume) {
 		t.Errorf("Expected ErrInvalidVolume for negative volume, got %v", err)
 	}
@@ -384,7 +479,10 @@ func TestGetMetadata(t *testing.T) {
 func TestGetMetadataMODFormat(t *testing.T) {
 	engine := NewEngine()
 
-	track, _ := engine.GetMetadata("/path/to/test.mod")
+	track, err := engine.GetMetadata("/path/to/test.mod")
+	if err != nil {
+		t.Fatalf("GetMetadata failed: %v", err)
+	}
 
 	if !track.IsMOD {
 		t.Error("MOD file should be marked as MOD")
@@ -398,19 +496,29 @@ func TestGetMetadataMODFormat(t *testing.T) {
 // TestSimulateProgress tests simulating playback progress.
 func TestSimulateProgress(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
-	handle, _ := engine.Load("/path/to/test.mp3")
-	engine.Play(handle)
+	handle, err := engine.Load("/path/to/test.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	_ = engine.Play(handle)
 
 	// Simulate 30 seconds of progress
-	err := engine.SimulateProgress(handle, 30*time.Second)
+	err = engine.SimulateProgress(handle, 30*time.Second)
 	if err != nil {
 		t.Errorf("SimulateProgress failed: %v", err)
 	}
 
-	pos, _ := engine.Position(handle)
+	pos, err := engine.Position(handle)
+	if err != nil {
+		t.Fatalf("Position failed: %v", err)
+	}
 	if pos != 30*time.Second {
 		t.Errorf("Expected position 30s, got %v", pos)
 	}
@@ -422,14 +530,23 @@ func TestSimulateProgress(t *testing.T) {
 	}
 
 	// Position should be capped at duration
-	pos, _ = engine.Position(handle)
-	duration, _ := engine.Duration(handle)
+	pos, err = engine.Position(handle)
+	if err != nil {
+		t.Fatalf("Position failed: %v", err)
+	}
+	duration, err := engine.Duration(handle)
+	if err != nil {
+		t.Fatalf("Duration failed: %v", err)
+	}
 	if pos != duration {
 		t.Errorf("Expected position at duration %v, got %v", duration, pos)
 	}
 
 	// Track should be stopped after reaching the end
-	status, _ := engine.Status(handle)
+	status, err := engine.Status(handle)
+	if err != nil {
+		t.Fatalf("Status failed: %v", err)
+	}
 	if status != domain.StatusStopped {
 		t.Errorf("Expected StatusStopped after reaching end, got %v", status)
 	}
@@ -453,8 +570,12 @@ func TestFailInitialize(t *testing.T) {
 // TestFailLoad tests configured load failure.
 func TestFailLoad(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	engine.SetFailLoad(true)
 
@@ -467,14 +588,21 @@ func TestFailLoad(t *testing.T) {
 // TestFailPlay tests configured playback failure.
 func TestFailPlay(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
-	handle, _ := engine.Load("/path/to/test.mp3")
+	handle, err := engine.Load("/path/to/test.mp3")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
 
 	engine.SetFailPlay(true)
 
-	err := engine.Play(handle)
+	err = engine.Play(handle)
 	if err == nil {
 		t.Error("Expected play to fail")
 	}
@@ -483,8 +611,12 @@ func TestFailPlay(t *testing.T) {
 // TestConcurrentLoad tests concurrent track loading.
 func TestConcurrentLoad(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	const numGoroutines = 10
 
@@ -523,14 +655,21 @@ func TestConcurrentLoad(t *testing.T) {
 // TestConcurrentPlayback tests concurrent playback operations.
 func TestConcurrentPlayback(t *testing.T) {
 	engine := NewEngine()
-	engine.Initialize(-1, 44100, 0)
-	defer engine.Shutdown()
+	_ = engine.Initialize(-1, 44100, 0)
+	defer func() {
+		if err := engine.Shutdown(); err != nil {
+			t.Errorf("Error during engine shutdown: %v", err)
+		}
+	}()
 
 	// Load multiple tracks
 	const numTracks = 5
 	handles := make([]domain.TrackHandle, numTracks)
 	for i := 0; i < numTracks; i++ {
-		handle, _ := engine.Load("/path/to/test.mp3")
+		handle, err := engine.Load("/path/to/test.mp3")
+		if err != nil {
+			t.Fatalf("Load failed: %v", err)
+		}
 		handles[i] = handle
 	}
 
@@ -542,17 +681,17 @@ func TestConcurrentPlayback(t *testing.T) {
 		h := handle
 		go func() {
 			defer wg.Done()
-			engine.Play(h)
+			_ = engine.Play(h)
 		}()
 		go func() {
 			defer wg.Done()
 			time.Sleep(time.Millisecond)
-			engine.Pause(h)
+			_ = engine.Pause(h)
 		}()
 		go func() {
 			defer wg.Done()
 			time.Sleep(2 * time.Millisecond)
-			engine.Stop(h)
+			_ = engine.Stop(h)
 		}()
 	}
 

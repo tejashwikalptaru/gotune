@@ -33,6 +33,7 @@ type PlaybackService struct {
 	stopUpdate    chan struct{}
 	updateRunning bool
 	manualStop    bool // True if the user explicitly stopped playback
+	hasPlayed     bool // True if the current track has been played
 }
 
 // NewPlaybackService creates a new playback service.
@@ -98,6 +99,7 @@ func (s *PlaybackService) LoadTrack(track domain.MusicTrack, index int) error {
 	s.currentHandle = handle
 	s.currentIndex = index
 	s.manualStop = false
+	s.hasPlayed = false
 
 	fmt.Printf("DEBUG: LoadTrack() succeeded, currentHandle set to %d\n", s.currentHandle)
 
@@ -138,6 +140,7 @@ func (s *PlaybackService) Play() error {
 
 	// Start/resume playback
 	s.manualStop = false
+	s.hasPlayed = true
 	if err := s.engine.Play(s.currentHandle); err != nil {
 		fmt.Printf("DEBUG: Play() failed - engine.Play error: %v\n", err)
 		return err
@@ -192,6 +195,7 @@ func (s *PlaybackService) stopInternal() error {
 	}
 
 	s.manualStop = true
+	s.hasPlayed = false
 
 	// Stop the track
 	if err := s.engine.Stop(s.currentHandle); err != nil {
@@ -417,72 +421,89 @@ func (s *PlaybackService) startUpdateRoutine() {
 // publishProgressUpdate publishes a progress event if a track is playing.
 func (s *PlaybackService) publishProgressUpdate() {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
 
 	// Nothing to update if no track loaded
 	if s.currentHandle == domain.InvalidTrackHandle || s.currentTrack == nil {
+		s.mu.RUnlock()
 		return
 	}
 
 	// Get current status
 	status, err := s.engine.Status(s.currentHandle)
 	if err != nil {
+		s.mu.RUnlock()
 		return
 	}
 
 	// Get position and duration
 	position, err := s.engine.Position(s.currentHandle)
 	if err != nil {
+		s.mu.RUnlock()
 		return
 	}
 
 	duration, err := s.engine.Duration(s.currentHandle)
 	if err != nil {
+		s.mu.RUnlock()
 		return
 	}
 
-	// Publish progress event
+	// Determine if track finished while holding read lock
+	shouldFinish := status == domain.StatusStopped && !s.manualStop && s.hasPlayed
+	track := s.currentTrack // Copy pointer for later use
+
+	// Release read lock BEFORE any further processing
+	s.mu.RUnlock()
+
+	// Publish progress event (no lock needed - event bus is thread-safe)
 	s.bus.Publish(domain.NewTrackProgressEvent(position, duration))
 
-	// Handle track finished (only if not manually stopped)
-	if status == domain.StatusStopped && !s.manualStop {
-		// s.handleTrackFinished()
+	// Handle track finished with NO lock held
+	if shouldFinish && track != nil {
+		s.mu.Lock()
+		s.handleTrackFinishedWithLock() // Expects write lock, releases it before returning
+		// Lock already released by handler - DO NOT UNLOCK HERE
 	}
 }
 
-// handleTrackFinished is called when a track finishes playing naturally.
-func (s *PlaybackService) handleTrackFinished() {
-	// This is called with read lock held from publishProgressUpdate
-	// We need to handle this carefully
-
+// handleTrackFinishedWithLock is called when a track finishes playing naturally.
+// Expects write lock held on entry. ALWAYS releases lock before returning.
+func (s *PlaybackService) handleTrackFinishedWithLock() {
 	if s.currentTrack == nil {
+		s.mu.Unlock() // Always unlock before early return
 		return
 	}
 
 	track := *s.currentTrack
+	shouldLoop := s.isLooping
+	index := s.currentIndex
+
+	// Reset state
+	s.hasPlayed = false
 
 	// Publish completed event
 	s.bus.Publish(domain.NewTrackCompletedEvent(track))
 
-	// If looping, restart the current track
-	if s.isLooping {
-		// Unlock, reload, and play
-		s.mu.RUnlock()
-		s.mu.Lock()
+	if shouldLoop {
+		// Stop internal (expects write lock)
+		s.stopInternal()
 
-		// Reload and play (without changing the index)
-		if s.currentTrack != nil {
-			s.stopInternal()
-			s.LoadTrack(track, s.currentIndex)
-			s.Play()
-		}
-
+		// Release lock before calling public methods
 		s.mu.Unlock()
-		s.mu.RLock()
+
+		// Call public methods (they acquire their own locks)
+		s.LoadTrack(track, index)
+		s.Play()
+
+		// Lock already released
 	} else {
-		// Otherwise, publish the auto-next event (PlaylistService will handle)
-		s.bus.Publish(domain.NewAutoNextEvent(track, s.currentIndex))
+		// Release lock before publishing event
+		s.mu.Unlock()
+
+		// Publish auto-next event for playlist
+		s.bus.Publish(domain.NewAutoNextEvent(track, index))
 	}
+	// Lock is ALWAYS released before this point
 }
 
 // Verify that PlaybackService implements the expected interface patterns

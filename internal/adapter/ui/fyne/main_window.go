@@ -6,6 +6,7 @@ import (
 	"image"
 	"math"
 	"sync"
+	"time"
 
 	fyneapp "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -283,8 +284,24 @@ func (w *MainWindow) addShortcuts() {
 
 // startScrollInfoRoutine starts the song info scrolling animation.
 // This should only be called after the Fyne app is fully initialized (in ShowAndRun).
-// TEMPORARILY DISABLED: Fyne v2 threading requirements need proper implementation
 func (w *MainWindow) startScrollInfoRoutine() {
+	go func() {
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-w.stopScroll:
+				return
+			case <-ticker.C:
+				if w.rotator != nil {
+					fyneapp.Do(func() {
+						w.songInfo.SetText(w.rotator.Rotate())
+					})
+				}
+			}
+		}
+	}()
 }
 
 // ShowAndRun shows the window and runs the application.
@@ -377,6 +394,8 @@ func (w *MainWindow) SetTrackInfo(title, artist, album string) {
 
 		// Update rotator for scrolling text
 		w.rotator = rotate.NewRotator(text, 15)
+		// Set initial label text
+		w.songInfo.SetText(text)
 	})
 }
 

@@ -62,5 +62,3 @@ formatters:
   enable:
     - gofmt
     - goimports
-  disable:
-    - gofumpt

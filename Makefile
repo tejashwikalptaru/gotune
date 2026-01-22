@@ -91,16 +91,6 @@ deadcode:
 	@which deadcode > /dev/null || (echo "Installing deadcode..." && go install golang.org/x/tools/cmd/deadcode@latest)
 	deadcode ./...
 
-# Check for dead code including test executables
-deadcode-test:
-	@which deadcode > /dev/null || (echo "Installing deadcode..." && go install golang.org/x/tools/cmd/deadcode@latest)
-	deadcode -test ./...
-
-# Check for dead code without filtering (for debugging/special cases)
-deadcode-unfiltered:
-	@which deadcode > /dev/null || (echo "Installing deadcode..." && go install golang.org/x/tools/cmd/deadcode@latest)
-	deadcode ./...
-
 # Run all linting checks (golangci-lint + deadcode)
 lint-all: lint deadcode
 

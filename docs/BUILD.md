@@ -415,7 +415,7 @@ FROM golang:1.25-alpine
 RUN apk add --no-cache gcc musl-dev make unzip
 
 WORKDIR /app
-COPY . .
+COPY .. .
 
 RUN ./scripts/setup-libs.sh
 RUN make build

@@ -39,6 +39,9 @@ jobs:
         with:
           version: v2.6
 
+      - name: Deadcode check
+        run: make deadcode
+
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

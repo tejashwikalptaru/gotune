@@ -102,6 +102,7 @@ jobs:
           $env:PATH = "${{ github.workspace }}\${{ matrix.lib_path }};$env:PATH"
           go test ./internal/... -v -count=1
 
+
   build:
     name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
     runs-on: ${{ matrix.os }}
@@ -148,7 +149,7 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 1
-        run: go build -o build/${{ matrix.binary }} ./cmd
+        run: go build -o build/${{ matrix.binary }} ./
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -160,7 +161,7 @@ jobs:
   package:
     name: Package (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    needs: [lint, test]
+    needs: build
     strategy:
       fail-fast: false
       matrix:
@@ -209,7 +210,7 @@ jobs:
         env:
           DYLD_LIBRARY_PATH: ${{ github.workspace }}/${{ matrix.lib_path }}
         run: |
-          fyne package -os darwin -icon icon.png
+          fyne package -os darwin
           install_name_tool -add_rpath @executable_path "Go Tune.app/Contents/MacOS/gotune"
           cp ${{ matrix.lib_path }}/${{ matrix.lib_file }} "Go Tune.app/Contents/MacOS/"
           zip -r "${{ matrix.artifact_name }}" "Go Tune.app"
@@ -219,7 +220,7 @@ jobs:
         env:
           LD_LIBRARY_PATH: ${{ github.workspace }}/${{ matrix.lib_path }}
         run: |
-          fyne package -os linux -icon icon.png
+          fyne package -os linux
           mkdir -p package-tmp
           tar -xf "Go Tune.tar.xz" -C package-tmp
           cp ${{ matrix.lib_path }}/${{ matrix.lib_file }} package-tmp/usr/local/bin/
@@ -230,7 +231,7 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH = "${{ github.workspace }}\${{ matrix.lib_path }};$env:PATH"
-          fyne package -os windows -icon icon.png
+          fyne package -os windows
           New-Item -ItemType Directory -Force -Path package-tmp
           Copy-Item "Go Tune.exe" package-tmp/
           Copy-Item "${{ matrix.lib_path }}/${{ matrix.lib_file }}" package-tmp/

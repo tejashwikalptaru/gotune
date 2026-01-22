@@ -73,6 +73,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libgl1-mesa-dev xorg-dev
 
+      - name: Setup virtual audio device
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y pulseaudio
+          pulseaudio -D --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=virtual_speaker sink_properties=device.description=Virtual_Speaker
+          pactl set-default-sink virtual_speaker
+
       - name: Setup BASS libraries
         shell: bash
         run: ./scripts/setup-libs.sh

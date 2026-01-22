@@ -5,7 +5,8 @@ package bass
 
 /*
 #cgo CFLAGS: -I${SRCDIR}/../../../../build/libs/windows
-#cgo LDFLAGS: -L${SRCDIR}/../../../../build/libs/windows -lbass
+#cgo windows,amd64 LDFLAGS: -L${SRCDIR}/../../../../build/libs/windows/x64 -lbass
+#cgo windows,386 LDFLAGS: -L${SRCDIR}/../../../../build/libs/windows/x86 -lbass
 #include "bass.h"
 */
 import "C"

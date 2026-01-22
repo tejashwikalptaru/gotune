@@ -111,10 +111,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-13          # Intel runner
             goos: darwin
             goarch: amd64
             binary: gotune-darwin-amd64
+          - os: macos-latest      # Apple Silicon runner
+            goos: darwin
+            goarch: arm64
+            binary: gotune-darwin-arm64
           - os: ubuntu-latest
             goos: linux
             goarch: amd64
@@ -159,25 +163,34 @@ jobs:
           retention-days: 7
 
   package:
-    name: Package (${{ matrix.os }})
+    name: Package (${{ matrix.goos }}/${{ matrix.goarch }})
     runs-on: ${{ matrix.os }}
     needs: build
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-13          # Intel runner
             goos: darwin
-            artifact_name: GoTune-macOS.zip
+            goarch: amd64
+            artifact_name: GoTune-macOS-amd64.zip
+            lib_path: build/libs/darwin
+            lib_file: libbass.dylib
+          - os: macos-latest      # Apple Silicon runner
+            goos: darwin
+            goarch: arm64
+            artifact_name: GoTune-macOS-arm64.zip
             lib_path: build/libs/darwin
             lib_file: libbass.dylib
           - os: ubuntu-latest
             goos: linux
+            goarch: amd64
             artifact_name: GoTune-linux-amd64.tar.xz
             lib_path: build/libs/linux/x86_64
             lib_file: libbass.so
           - os: windows-latest
             goos: windows
+            goarch: amd64
             artifact_name: GoTune-windows-amd64.zip
             lib_path: build/libs/windows/x64
             lib_file: bass.dll
@@ -209,6 +222,7 @@ jobs:
         if: runner.os == 'macOS'
         env:
           DYLD_LIBRARY_PATH: ${{ github.workspace }}/${{ matrix.lib_path }}
+          GOARCH: ${{ matrix.goarch }}
         run: |
           fyne package -os darwin
           install_name_tool -add_rpath @executable_path "Go Tune.app/Contents/MacOS/gotune"
@@ -264,14 +278,16 @@ jobs:
             ### Binaries
             | Platform | Download |
             |----------|----------|
-            | macOS (amd64) | \`gotune-darwin-amd64\` |
+            | macOS (Intel) | \`gotune-darwin-amd64\` |
+            | macOS (Apple Silicon) | \`gotune-darwin-arm64\` |
             | Linux (amd64) | \`gotune-linux-amd64\` |
             | Windows (amd64) | \`gotune-windows-amd64.exe\` |
 
             ### Packaged Apps (with bundled libs)
             | Platform | Download |
             |----------|----------|
-            | macOS | \`GoTune-macOS.zip\` |
+            | macOS (Intel) | \`GoTune-macOS-amd64.zip\` |
+            | macOS (Apple Silicon) | \`GoTune-macOS-arm64.zip\` |
             | Linux | \`GoTune-linux-amd64.tar.xz\` |
             | Windows | \`GoTune-windows-amd64.zip\` |
 

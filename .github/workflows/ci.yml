@@ -71,7 +71,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libgl1-mesa-dev xorg-dev
+          sudo apt-get install -y libasound2-dev libgl1-mesa-dev xorg-dev xvfb
 
       - name: Setup virtual audio device
         if: runner.os == 'Linux'
@@ -85,8 +85,13 @@ jobs:
         shell: bash
         run: ./scripts/setup-libs.sh
 
-      - name: Run tests (Unix)
-        if: runner.os != 'Windows'
+      - name: Run tests (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          xvfb-run -a ${{ matrix.lib_path_var }}=${{ github.workspace }}/${{ matrix.lib_path }} go test ./internal/... -v -count=1
+
+      - name: Run tests (macOS)
+        if: runner.os == 'macOS'
         run: |
           ${{ matrix.lib_path_var }}=${{ github.workspace }}/${{ matrix.lib_path }} go test ./internal/... -v -count=1
 

@@ -509,12 +509,12 @@ func (p *Presenter) GetQueue() []domain.MusicTrack {
 // It's safe to call multiple times (idempotent).
 func (p *Presenter) Shutdown() {
 	p.shutdownOnce.Do(func() {
-		// Stop progress updates
-		p.stopProgressChan <- true
-		close(p.stopProgressChan)
-
+		// Stop the ticker first to prevent new iterations
 		if p.progressTicker != nil {
 			p.progressTicker.Stop()
 		}
+
+		// Close channel to signal goroutine to exit
+		close(p.stopProgressChan)
 	})
 }

@@ -73,7 +73,7 @@ package: create-package fix-rpath bundle-lib
 # -------------------------------------------------------------------------
 # Linting
 # -------------------------------------------------------------------------
-.PHONY: lint lint-ci lint-fix lint-install lint-all deadcode deadcode-unfiltered deadcode-test
+.PHONY: lint lint-ci lint-fix lint-install lint-all deadcode
 
 lint:
 	golangci-lint run
@@ -89,11 +89,20 @@ lint-fix:
 # Check for unreachable (dead) code including exported functions not used outside their package
 deadcode:
 	@which deadcode > /dev/null || (echo "Installing deadcode..." && go install golang.org/x/tools/cmd/deadcode@latest)
-	deadcode ./...
+	@echo "Running deadcode analysis..."
+	@# Capture stdout and stderr (2>&1) so we see if the command fails or finds code
+	@output=$$(deadcode ./... 2>&1); \
+	if [ -n "$$output" ]; then \
+		echo "$$output"; \
+		echo "Error: Dead code detected"; \
+		exit 1; \
+	else \
+		echo "Success: No dead code found"; \
+	fi
 
 # Run all linting checks (golangci-lint + deadcode)
 lint-all: lint deadcode
 
 # CI Simulation
 ci-local: lint deadcode build
-	@echo "✅ Local CI simulation complete"
+	@echo "Local CI checks complete"

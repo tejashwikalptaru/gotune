@@ -10,6 +10,7 @@ import (
 	"github.com/tejashwikalptaru/gotune/internal/adapter/audio/mock"
 	"github.com/tejashwikalptaru/gotune/internal/adapter/eventbus"
 	"github.com/tejashwikalptaru/gotune/internal/domain"
+	"github.com/tejashwikalptaru/gotune/internal/logger"
 )
 
 // Mock repositories for testing
@@ -119,11 +120,12 @@ func newTestPlaylistService() (*PlaylistService, *PlaybackService, *eventbus.Syn
 	_ = engine.Initialize(-1, 44100, 0)
 
 	bus := eventbus.NewSyncEventBus()
-	playback := NewPlaybackService(engine, bus)
+	testLogger := logger.NewTestLogger()
+	playback := NewPlaybackService(testLogger, engine, bus)
 	plRepo := newMockPlaylistRepository()
 	histRepo := newMockHistoryRepository()
 
-	playlist := NewPlaylistService(playback, plRepo, histRepo, bus)
+	playlist := NewPlaylistService(testLogger, playback, plRepo, histRepo, bus)
 
 	return playlist, playback, bus
 }
@@ -618,12 +620,13 @@ func TestPlaylistService_SaveAndLoadQueue(t *testing.T) {
 	}
 
 	bus := eventbus.NewSyncEventBus()
-	playback := NewPlaybackService(engine, bus)
+	testLogger := logger.NewTestLogger()
+	playback := NewPlaybackService(testLogger, engine, bus)
 	plRepo := newMockPlaylistRepository()
 	histRepo := newMockHistoryRepository()
 
 	// First service instance
-	service := NewPlaylistService(playback, plRepo, histRepo, bus)
+	service := NewPlaylistService(testLogger, playback, plRepo, histRepo, bus)
 
 	// Add tracks and play one
 	tracks := []domain.MusicTrack{
@@ -647,8 +650,8 @@ func TestPlaylistService_SaveAndLoadQueue(t *testing.T) {
 	}
 
 	// Create a new service instance with SAME repositories
-	playback2 := NewPlaybackService(engine, bus)
-	service2 := NewPlaylistService(playback2, plRepo, histRepo, bus)
+	playback2 := NewPlaybackService(testLogger, engine, bus)
+	service2 := NewPlaylistService(testLogger, playback2, plRepo, histRepo, bus)
 	defer func() {
 		if err := service2.Shutdown(); err != nil {
 			t.Errorf("Failed to shutdown service: %v", err)

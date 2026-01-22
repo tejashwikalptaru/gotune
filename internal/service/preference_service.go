@@ -2,6 +2,7 @@
 package service
 
 import (
+	"log/slog"
 	"sync"
 
 	"github.com/tejashwikalptaru/gotune/internal/domain"
@@ -12,6 +13,7 @@ import (
 // All operations are thread-safe via sync.RWMutex.
 type PreferenceService struct {
 	// Dependencies (injected)
+	logger     *slog.Logger
 	repository ports.PreferencesRepository
 	bus        ports.EventBus
 
@@ -28,16 +30,20 @@ type PreferenceService struct {
 
 // NewPreferenceService creates a new preference service.
 func NewPreferenceService(
+	logger *slog.Logger,
 	repository ports.PreferencesRepository,
 	bus ports.EventBus,
 ) *PreferenceService {
 	service := &PreferenceService{
+		logger:     logger,
 		repository: repository,
 		bus:        bus,
 		volume:     0.8,    // Default volume
 		theme:      "dark", // Default theme
 		cacheValid: false,
 	}
+
+	logger.Debug("preference service initialized")
 
 	// Load preferences from the repository
 	service.loadPreferences()

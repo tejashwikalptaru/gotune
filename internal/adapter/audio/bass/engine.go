@@ -2,8 +2,7 @@
 package bass
 
 import (
-	"fmt"
-	"os"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -16,6 +15,9 @@ import (
 //
 // Thread-safety: This implementation is thread-safe via sync.RWMutex.
 type Engine struct {
+	// Dependencies
+	logger *slog.Logger
+
 	// Configuration
 	initialized bool
 	device      int
@@ -39,6 +41,14 @@ func NewEngine() *Engine {
 	return &Engine{
 		tracks: make(map[domain.TrackHandle]*trackInfo),
 	}
+}
+
+// SetLogger sets the logger for this engine.
+// This should be called after construction before using the engine.
+func (e *Engine) SetLogger(logger *slog.Logger) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.logger = logger
 }
 
 // Initialize sets up the BASS audio engine.
@@ -75,7 +85,11 @@ func (e *Engine) Shutdown() error {
 	// Stop and free all loaded tracks
 	for handle := range e.tracks {
 		if err := e.unloadInternal(handle); err != nil {
-			fmt.Fprintf(os.Stderr, "Error unloading track %d during shutdown: %v\n", handle, err)
+			if e.logger != nil {
+				e.logger.Error("error unloading track during shutdown",
+					slog.Int64("handle", int64(handle)),
+					slog.Any("error", err))
+			}
 		}
 	}
 
@@ -139,7 +153,7 @@ func (e *Engine) Load(filePath string) (domain.TrackHandle, error) {
 		}
 	}
 
-	// Create track handle (use bassHandle as the domain handle)
+	// Create a track handle (use bassHandle as the domain handle)
 	handle := domain.TrackHandle(bassHandle)
 
 	// Store track info
@@ -194,36 +208,54 @@ func (e *Engine) Play(handle domain.TrackHandle) error {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	fmt.Printf("DEBUG [Engine]: Play() called with handle %d\n", handle)
+	if e.logger != nil {
+		e.logger.Debug("play called", slog.Int64("handle", int64(handle)))
+	}
 
 	if !e.initialized {
-		fmt.Println("DEBUG [Engine]: Engine not initialized!")
+		if e.logger != nil {
+			e.logger.Debug("engine not initialized")
+		}
 		return domain.ErrNotInitialized
 	}
 
 	track, exists := e.tracks[handle]
 	if !exists {
-		fmt.Printf("DEBUG [Engine]: Track handle %d not found!\n", handle)
+		if e.logger != nil {
+			e.logger.Debug("track handle not found", slog.Int64("handle", int64(handle)))
+		}
 		return domain.ErrInvalidTrackHandle
 	}
 
-	fmt.Printf("DEBUG [Engine]: Track info - BASS handle: %d, path: %s\n", track.handle, track.filePath)
+	if e.logger != nil {
+		e.logger.Debug("track info",
+			slog.Int64("bass_handle", track.handle),
+			slog.String("file_path", track.filePath))
+	}
 
 	status := bassChannelIsActive(track.handle)
-	fmt.Printf("DEBUG [Engine]: Channel status before play: %v\n", status)
+	if e.logger != nil {
+		e.logger.Debug("channel status before play", slog.Any("status", status))
+	}
 
 	// If stopped, restart from the beginning
 	restart := status == domain.StatusStopped || status == domain.StatusStalled
-	fmt.Printf("DEBUG [Engine]: Calling bassChannelPlay with restart=%v\n", restart)
+	if e.logger != nil {
+		e.logger.Debug("calling bassChannelPlay", slog.Bool("restart", restart))
+	}
 
 	err := bassChannelPlay(track.handle, restart)
 	if err != nil {
-		fmt.Printf("DEBUG [Engine]: bassChannelPlay FAILED: %v\n", err)
+		if e.logger != nil {
+			e.logger.Debug("bassChannelPlay failed", slog.Any("error", err))
+		}
 	} else {
-		fmt.Println("DEBUG [Engine]: bassChannelPlay returned SUCCESS")
-		// Check status after play
-		newStatus := bassChannelIsActive(track.handle)
-		fmt.Printf("DEBUG [Engine]: Channel status AFTER play: %v\n", newStatus)
+		if e.logger != nil {
+			e.logger.Debug("bassChannelPlay succeeded")
+			// Check status after play
+			newStatus := bassChannelIsActive(track.handle)
+			e.logger.Debug("channel status after play", slog.Any("status", newStatus))
+		}
 	}
 
 	return err

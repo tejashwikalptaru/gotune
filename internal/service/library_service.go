@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,6 +18,7 @@ import (
 // All operations are thread-safe via sync.RWMutex.
 type LibraryService struct {
 	// Dependencies (injected)
+	logger *slog.Logger
 	engine ports.AudioEngine
 	bus    ports.EventBus
 
@@ -32,10 +34,14 @@ type LibraryService struct {
 
 // NewLibraryService creates a new library service.
 func NewLibraryService(
+	logger *slog.Logger,
 	engine ports.AudioEngine,
 	bus ports.EventBus,
 ) *LibraryService {
+	logger.Debug("library service initialized")
+
 	return &LibraryService{
+		logger: logger,
 		engine: engine,
 		bus:    bus,
 		supportedExts: []string{

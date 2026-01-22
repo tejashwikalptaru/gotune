@@ -53,31 +53,40 @@ func getTestAudioFile(t *testing.T) string {
 }
 
 // createMinimalWAV creates a minimal valid WAV file with silence.
-func createMinimalWAV(sampleRate, durationSeconds int) []byte {
+func createMinimalWAV(sampleRate, durationSeconds uint32) []byte {
+	// Validate inputs to prevent integer overflow
+	if sampleRate > 192000 {
+		panic("sampleRate out of valid range")
+	}
+	if durationSeconds > 3600 {
+		panic("durationSeconds out of valid range")
+	}
+
+	// All calculations use uint32
 	numSamples := sampleRate * durationSeconds
 	dataSize := numSamples * 2 // 16-bit samples = 2 bytes per sample
 	fileSize := 36 + dataSize
 
-	wav := make([]byte, 44+dataSize)
+	wav := make([]byte, 44+int(dataSize))
 
 	// RIFF header
 	copy(wav[0:4], "RIFF")
-	writeUint32LE(wav[4:8], uint32(fileSize))
+	writeUint32LE(wav[4:8], fileSize)
 	copy(wav[8:12], "WAVE")
 
 	// fmt chunk
 	copy(wav[12:16], "fmt ")
-	writeUint32LE(wav[16:20], 16)                   // fmt chunk size
-	writeUint16LE(wav[20:22], 1)                    // audio format (PCM)
-	writeUint16LE(wav[22:24], 1)                    // num channels (mono)
-	writeUint32LE(wav[24:28], uint32(sampleRate))   // sample rate
-	writeUint32LE(wav[28:32], uint32(sampleRate*2)) // byte rate
-	writeUint16LE(wav[32:34], 2)                    // block align
-	writeUint16LE(wav[34:36], 16)                   // bits per sample
+	writeUint32LE(wav[16:20], 16)           // fmt chunk size
+	writeUint16LE(wav[20:22], 1)            // audio format (PCM)
+	writeUint16LE(wav[22:24], 1)            // num channels (mono)
+	writeUint32LE(wav[24:28], sampleRate)   // sample rate
+	writeUint32LE(wav[28:32], sampleRate*2) // byte rate
+	writeUint16LE(wav[32:34], 2)            // block align
+	writeUint16LE(wav[34:36], 16)           // bits per sample
 
 	// data chunk
 	copy(wav[36:40], "data")
-	writeUint32LE(wav[40:44], uint32(dataSize))
+	writeUint32LE(wav[40:44], dataSize)
 	// Data is already zeros (silence)
 
 	return wav

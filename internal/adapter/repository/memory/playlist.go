@@ -42,10 +42,16 @@ func (r *PlaylistRepository) Save(playlist *domain.Playlist) error {
 	r.prefs.SetString(key, string(data))
 
 	// Update the list of playlist IDs
-	ids, _ := r.loadPlaylistIDs()
+	ids, err := r.loadPlaylistIDs()
+	if err != nil {
+		// If loading fails, start with empty slice
+		ids = []string{}
+	}
 	if !contains(ids, playlist.ID) {
 		ids = append(ids, playlist.ID)
-		r.savePlaylistIDs(ids)
+		if err := r.savePlaylistIDs(ids); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -114,9 +120,15 @@ func (r *PlaylistRepository) Delete(id string) error {
 	r.prefs.RemoveValue(key)
 
 	// Update the list of playlist IDs
-	ids, _ := r.loadPlaylistIDs()
+	ids, err := r.loadPlaylistIDs()
+	if err != nil {
+		// If loading fails, start with empty slice
+		ids = []string{}
+	}
 	ids = remove(ids, id)
-	r.savePlaylistIDs(ids)
+	if err := r.savePlaylistIDs(ids); err != nil {
+		return err
+	}
 
 	return nil
 }

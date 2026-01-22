@@ -16,9 +16,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"os"
+	"log/slog"
 
 	"github.com/tejashwikalptaru/gotune/internal/app"
 )
@@ -38,17 +37,13 @@ func main() {
 
 	// Ensure a graceful shutdown
 	defer func() {
-		fmt.Println("\nShutting down...")
-		if err := application.Shutdown(); err != nil {
-			fmt.Fprintf(os.Stderr, "Shutdown error: %v\n", err)
-		}
-		fmt.Println("Shutdown complete")
+		slog.Info("shutting down application")
+		application.Shutdown()
+		slog.Info("shutdown complete")
 	}()
 
 	// Run application (blocks until the window closed)
-	if err := application.Run(); err != nil {
-		log.Printf("Application error: %v", err)
-	}
+	application.Run()
 
-	fmt.Println("Application exited cleanly")
+	slog.Info("application exited cleanly")
 }

@@ -146,6 +146,7 @@ func TestUnsubscribe(t *testing.T) {
 
 // TestUnsubscribeInvalidID tests unsubscribing with invalid ID (should be no-op).
 func TestUnsubscribeInvalidID(t *testing.T) {
+	_ = t // Test verifies no panic occurs
 	bus := NewSyncEventBus()
 	defer bus.Close()
 
@@ -369,7 +370,7 @@ func TestConcurrentPublishAndSubscribe(t *testing.T) {
 
 	var eventCount int32
 
-	handler := func(event domain.Event) {
+	handler := func(_ domain.Event) {
 		atomic.AddInt32(&eventCount, 1)
 	}
 

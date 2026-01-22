@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tejashwikalptaru/gotune/internal/adapter/eventbus"
 	"github.com/tejashwikalptaru/gotune/internal/domain"
+	"github.com/tejashwikalptaru/gotune/internal/logger"
 )
 
 // Mock preferences repository for testing
@@ -98,7 +99,8 @@ func (m *mockPreferencesRepository) Clear() error {
 func newTestPreferenceService() (*PreferenceService, *mockPreferencesRepository) {
 	repo := newMockPreferencesRepository()
 	bus := eventbus.NewSyncEventBus()
-	service := NewPreferenceService(repo, bus)
+	testLogger := logger.NewTestLogger()
+	service := NewPreferenceService(testLogger, repo, bus)
 
 	return service, repo
 }
@@ -293,15 +295,16 @@ func TestPreferenceService_GetAllPreferences(t *testing.T) {
 func TestPreferenceService_Persistence(t *testing.T) {
 	repo := newMockPreferencesRepository()
 	bus := eventbus.NewSyncEventBus()
+	testLogger := logger.NewTestLogger()
 
 	// First service instance
-	service1 := NewPreferenceService(repo, bus)
+	service1 := NewPreferenceService(testLogger, repo, bus)
 	service1.SetVolume(0.6)
 	service1.SetLoopMode(true)
 	service1.Shutdown()
 
 	// Second service instance with the same repository
-	service2 := NewPreferenceService(repo, bus)
+	service2 := NewPreferenceService(testLogger, repo, bus)
 	defer service2.Shutdown()
 
 	// Should load saved preferences

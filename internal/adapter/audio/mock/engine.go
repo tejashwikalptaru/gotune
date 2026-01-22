@@ -4,6 +4,7 @@ package mock
 
 import (
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"sync"
 	"time"
@@ -17,6 +18,9 @@ import (
 //
 // Thread-safety: This implementation is thread-safe.
 type Engine struct {
+	// Dependencies
+	logger *slog.Logger
+
 	// Configuration
 	initialized bool
 	device      int
@@ -50,6 +54,14 @@ func NewEngine() *Engine {
 		tracks:     make(map[domain.TrackHandle]*mockTrack),
 		nextHandle: 1,
 	}
+}
+
+// SetLogger sets the logger for this engine.
+// This should be called after construction before using the engine.
+func (m *Engine) SetLogger(logger *slog.Logger) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.logger = logger
 }
 
 // SetFailInitialize configures the mock to fail initialization (for testing).

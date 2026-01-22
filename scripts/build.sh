@@ -1,6 +1,17 @@
 #!/bin/bash
 set -e
 
+echo "========================================"
+echo "GoTune Cross-Platform Build Script"
+echo "========================================"
+echo ""
+echo "WARNING: Cross-compilation with CGO requires platform-specific toolchains."
+echo "For production builds, we recommend building natively on each platform."
+echo "See BUILD.md for detailed instructions."
+echo ""
+echo "Continuing with cross-compilation attempt..."
+echo ""
+
 echo "Building GoTune for multiple platforms..."
 
 # macOS (current platform)

@@ -4,6 +4,7 @@ package eventbus
 
 import (
 	"fmt"
+	"log/slog"
 	"reflect"
 	"runtime"
 	"sync"
@@ -23,6 +24,9 @@ import (
 // event delivery. Handlers should process events quickly or dispatch to a
 // background goroutine if long processing is needed.
 type SyncEventBus struct {
+	// Dependencies
+	logger *slog.Logger
+
 	// subscribers map event types to their subscriptions
 	subscribers map[domain.EventType][]subscription
 
@@ -52,6 +56,14 @@ func NewSyncEventBus() *SyncEventBus {
 		allSubscribers: make([]subscription, 0),
 		idCounter:      0,
 	}
+}
+
+// SetLogger sets the logger for this event bus.
+// This should be called after construction before using the event bus.
+func (bus *SyncEventBus) SetLogger(logger *slog.Logger) {
+	bus.mu.Lock()
+	defer bus.mu.Unlock()
+	bus.logger = logger
 }
 
 // Publish publishes an event to all subscribers of that event type.
@@ -99,12 +111,20 @@ func (bus *SyncEventBus) callHandler(handler domain.EventHandler, event domain.E
 	defer func() {
 		if r := recover(); r != nil {
 			// Handler panicked - log it but don't crash
-			// In production, this should use proper logging
-			fmt.Printf("Event handler panicked: %v\n", r)
+			if bus.logger != nil {
+				bus.logger.Error("event handler panicked",
+					slog.Any("panic", r),
+					slog.String("event_type", string(event.Type())))
+			}
 		}
 	}()
 
-	fmt.Printf("Event: %s called, handler: %s\n", event.Type(), runtime.FuncForPC(reflect.ValueOf(handler).Pointer()).Name())
+	if bus.logger != nil {
+		handlerName := runtime.FuncForPC(reflect.ValueOf(handler).Pointer()).Name()
+		bus.logger.Debug("event published",
+			slog.String("event_type", string(event.Type())),
+			slog.String("handler", handlerName))
+	}
 	handler(event)
 }
 

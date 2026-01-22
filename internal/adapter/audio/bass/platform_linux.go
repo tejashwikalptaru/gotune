@@ -5,7 +5,7 @@ package bass
 
 /*
 #cgo CFLAGS: -I${SRCDIR}/../../../../build/libs/linux
-#cgo LDFLAGS: -L${SRCDIR}/../../../../build/libs/linux -lbass -Wl,-rpath,'$ORIGIN'/../libs
+#cgo LDFLAGS: -L${SRCDIR}/../../../../build/libs/linux -lbass -Wl,-rpath,$$ORIGIN/../libs
 #include "bass.h"
 */
 import "C"

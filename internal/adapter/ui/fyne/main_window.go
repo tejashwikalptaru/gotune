@@ -392,11 +392,12 @@ func (w *MainWindow) SetTrackInfo(title, artist, album string) {
 	fyneapp.Do(func() {
 		// Format: "Artist - Title"
 		var text string
-		if artist != "" && title != "" {
+		switch {
+		case artist != "" && title != "":
 			text = fmt.Sprintf("%s - %s", artist, title)
-		} else if title != "" {
+		case title != "":
 			text = title
-		} else {
+		default:
 			text = "No track loaded"
 		}
 

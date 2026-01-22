@@ -29,8 +29,7 @@ func TestNewApplication(t *testing.T) {
 	assert.NotNil(t, app.GetFyneApp())
 
 	// Cleanup
-	err = app.Shutdown()
-	assert.NoError(t, err)
+	app.Shutdown()
 }
 
 func TestDefaultConfig(t *testing.T) {
@@ -54,12 +53,10 @@ func TestApplicationLifecycle(t *testing.T) {
 	// Run would normally block, but we're not calling it in test
 
 	// Shutdown
-	err = app.Shutdown()
-	assert.NoError(t, err)
+	app.Shutdown()
 
 	// Shutdown again should not panic
-	err = app.Shutdown()
-	assert.NoError(t, err)
+	app.Shutdown()
 }
 
 func TestApplicationLoadSavedState(t *testing.T) {

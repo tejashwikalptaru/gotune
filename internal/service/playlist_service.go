@@ -2,6 +2,7 @@
 package service
 
 import (
+	"log/slog"
 	"sync"
 
 	"github.com/tejashwikalptaru/gotune/internal/domain"
@@ -13,6 +14,7 @@ import (
 // All operations are thread-safe via sync.RWMutex.
 type PlaylistService struct {
 	// Dependencies (injected)
+	logger     *slog.Logger
 	playback   *PlaybackService
 	repository ports.PlaylistRepository
 	history    ports.HistoryRepository
@@ -31,12 +33,14 @@ type PlaylistService struct {
 
 // NewPlaylistService creates a new playlist service.
 func NewPlaylistService(
+	logger *slog.Logger,
 	playback *PlaybackService,
 	repository ports.PlaylistRepository,
 	history ports.HistoryRepository,
 	bus ports.EventBus,
 ) *PlaylistService {
 	service := &PlaylistService{
+		logger:       logger,
 		playback:     playback,
 		repository:   repository,
 		history:      history,
@@ -44,6 +48,8 @@ func NewPlaylistService(
 		queue:        make([]domain.MusicTrack, 0),
 		currentIndex: -1,
 	}
+
+	logger.Debug("playlist service initialized")
 
 	// Subscribe to auto-next events from the playback service
 	service.autoNextSub = bus.Subscribe(domain.EventAutoNext, service.handleAutoNext)
@@ -165,7 +171,9 @@ func (s *PlaylistService) RemoveTrack(index int) error {
 	// Adjust the current index if needed
 	if s.currentIndex == index {
 		// Stopped playing the removed track
-		s.playback.Stop()
+		if err := s.playback.Stop(); err != nil {
+			s.logger.Warn("failed to stop playback", slog.Any("error", err))
+		}
 		s.currentIndex = -1
 	} else if s.currentIndex > index {
 		// Shift index down
@@ -184,7 +192,9 @@ func (s *PlaylistService) ClearQueue() error {
 	defer s.mu.Unlock()
 
 	// Stop playback
-	s.playback.Stop()
+	if err := s.playback.Stop(); err != nil {
+		s.logger.Warn("failed to stop playback", slog.Any("error", err))
+	}
 
 	// Clear queue
 	s.queue = make([]domain.MusicTrack, 0)
@@ -417,11 +427,12 @@ func (s *PlaylistService) MoveTrack(fromIndex, toIndex int) error {
 	s.queue = append(s.queue[:toIndex], append([]domain.MusicTrack{track}, s.queue[toIndex:]...)...)
 
 	// Adjust the current index if needed
-	if s.currentIndex == fromIndex {
+	switch {
+	case s.currentIndex == fromIndex:
 		s.currentIndex = toIndex
-	} else if fromIndex < s.currentIndex && toIndex >= s.currentIndex {
+	case fromIndex < s.currentIndex && toIndex >= s.currentIndex:
 		s.currentIndex--
-	} else if fromIndex > s.currentIndex && toIndex <= s.currentIndex {
+	case fromIndex > s.currentIndex && toIndex <= s.currentIndex:
 		s.currentIndex++
 	}
 
@@ -466,7 +477,9 @@ func (s *PlaylistService) handleAutoNext(event domain.Event) {
 	if s.currentIndex >= len(s.queue)-1 {
 		// End of queue - stop playback to clean up state
 		s.mu.Unlock()
-		s.playback.Stop()
+		if err := s.playback.Stop(); err != nil {
+			s.logger.Warn("failed to stop playback at end of queue", slog.Any("error", err))
+		}
 		s.mu.Lock()
 		return
 	}
@@ -477,8 +490,14 @@ func (s *PlaylistService) handleAutoNext(event domain.Event) {
 
 	// Load and play (unlock first to avoid deadlock)
 	s.mu.Unlock()
-	s.playback.LoadTrack(track, s.currentIndex)
-	s.playback.Play()
+	if err := s.playback.LoadTrack(track, s.currentIndex); err != nil {
+		s.logger.Warn("failed to load next track", slog.Any("error", err))
+		s.mu.Lock()
+		return
+	}
+	if err := s.playback.Play(); err != nil {
+		s.logger.Warn("failed to play next track", slog.Any("error", err))
+	}
 
 	// Publish playlist updated event
 	s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
@@ -494,9 +513,13 @@ func (s *PlaylistService) Shutdown() error {
 	// Unsubscribe from events
 	s.bus.Unsubscribe(s.autoNextSub)
 
-	// Save queue before shutdown
-	s.history.SaveQueue(s.queue)
-	s.history.SaveCurrentIndex(s.currentIndex)
+	// Save queue before shutdown (best effort)
+	if err := s.history.SaveQueue(s.queue); err != nil {
+		s.logger.Warn("failed to save queue on shutdown", slog.Any("error", err))
+	}
+	if err := s.history.SaveCurrentIndex(s.currentIndex); err != nil {
+		s.logger.Warn("failed to save current index on shutdown", slog.Any("error", err))
+	}
 
 	return nil
 }

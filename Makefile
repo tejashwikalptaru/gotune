@@ -1,16 +1,33 @@
 .PHONY: build build-demo build-all test test-race create-package prepare-lib bundle-lib clean package
 
+# Detect operating system for library paths
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
+# Set library path based on OS
+ifeq ($(UNAME_S),Darwin)
+    LIB_PATH_VAR := DYLD_LIBRARY_PATH
+    LIB_PATH := $(PWD)/build/libs/darwin
+else ifeq ($(UNAME_S),Linux)
+    LIB_PATH_VAR := LD_LIBRARY_PATH
+    LIB_PATH := $(PWD)/build/libs/linux/$(UNAME_M)
+else
+    # Windows - requires different approach
+    LIB_PATH_VAR := PATH
+    LIB_PATH := $(PWD)/build/libs/windows/x64
+endif
+
 # Production build
 build:
 	go build -o build/gotune ./cmd
 
 # Run tests
 test:
-	DYLD_LIBRARY_PATH=$(PWD)/build/libs/darwin go test ./internal/... -v -count=1
+	$(LIB_PATH_VAR)=$(LIB_PATH) go test ./internal/... -v -count=1
 
 # Run tests with race detection
 test-race:
-	DYLD_LIBRARY_PATH=$(PWD)/build/libs/darwin go test ./internal/... -race -count=1
+	$(LIB_PATH_VAR)=$(LIB_PATH) go test ./internal/... -race -count=1
 
 # Execute production binary
 execute:

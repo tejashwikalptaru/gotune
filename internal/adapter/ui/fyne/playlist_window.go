@@ -2,6 +2,7 @@ package fyne
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -149,7 +150,12 @@ func (w *PlaylistWindow) onCellDoubleTapped(index int) {
 
 	// Route through presenter (MVP pattern)
 	if w.presenter != nil {
-		_ = w.presenter.OnPlaylistTrackSelected(actualIndex)
+		if err := w.presenter.OnPlaylistTrackSelected(actualIndex); err != nil {
+			// Log error but don't block UI interaction
+			w.presenter.logger.Error("error selecting track",
+				slog.Any("error", err),
+				slog.Int("index", actualIndex))
+		}
 	}
 }
 
@@ -272,11 +278,9 @@ func (w *PlaylistWindow) onTrackAdded(event domain.Event) {
 		query := w.searchEntry.Text
 		if query == "" {
 			w.data = w.mainCollection
-		} else {
+		} else if w.matchesSearch(trackEvent.Track, query) {
 			// Check if track matches current search
-			if w.matchesSearch(trackEvent.Track, query) {
-				w.data = append(w.data, trackEvent.Track)
-			}
+			w.data = append(w.data, trackEvent.Track)
 		}
 
 		w.updateWindowTitle()

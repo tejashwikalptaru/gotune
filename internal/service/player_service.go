@@ -2,7 +2,7 @@
 package service
 
 import (
-	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -15,6 +15,7 @@ import (
 // All operations are thread-safe via sync.RWMutex.
 type PlaybackService struct {
 	// Dependencies (injected)
+	logger *slog.Logger
 	engine ports.AudioEngine
 	bus    ports.EventBus
 
@@ -38,10 +39,12 @@ type PlaybackService struct {
 
 // NewPlaybackService creates a new playback service.
 func NewPlaybackService(
+	logger *slog.Logger,
 	engine ports.AudioEngine,
 	bus ports.EventBus,
 ) *PlaybackService {
 	service := &PlaybackService{
+		logger:         logger,
 		engine:         engine,
 		bus:            bus,
 		currentHandle:  domain.InvalidTrackHandle,
@@ -50,6 +53,8 @@ func NewPlaybackService(
 		updateInterval: 333 * time.Millisecond, // 3 times per second
 		stopUpdate:     make(chan struct{}),
 	}
+
+	logger.Debug("playback service initialized")
 
 	// Start update routine
 	service.startUpdateRoutine()
@@ -63,34 +68,40 @@ func (s *PlaybackService) LoadTrack(track domain.MusicTrack, index int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	fmt.Printf("DEBUG: LoadTrack() called for: %s\n", track.FilePath)
+	s.logger.Debug("loading track", slog.String("file_path", track.FilePath))
 
 	// Stop the current track if any
 	if s.currentHandle != domain.InvalidTrackHandle {
-		fmt.Println("DEBUG: Stopping current track")
-		s.stopInternal()
+		s.logger.Debug("stopping current track")
+		if err := s.stopInternal(); err != nil {
+			s.logger.Warn("failed to stop current track", slog.Any("error", err))
+		}
 	}
 
 	// Load new track
 	handle, err := s.engine.Load(track.FilePath)
 	if err != nil {
-		fmt.Printf("DEBUG: LoadTrack() failed - engine.Load error: %v\n", err)
+		s.logger.Debug("failed to load track", slog.Any("error", err))
 		s.bus.Publish(domain.NewTrackErrorEvent(track, err))
 		return err
 	}
 
-	fmt.Printf("DEBUG: Loaded track with handle %d\n", handle)
+	s.logger.Debug("track loaded successfully", slog.Int64("handle", int64(handle)))
 
 	// Set volume on a new track
 	if err := s.engine.SetVolume(handle, s.volume); err != nil {
-		s.engine.Unload(handle)
+		if unloadErr := s.engine.Unload(handle); unloadErr != nil {
+			s.logger.Warn("failed to unload track after volume error", slog.Any("error", unloadErr))
+		}
 		return err
 	}
 
 	// Get duration
 	duration, err := s.engine.Duration(handle)
 	if err != nil {
-		s.engine.Unload(handle)
+		if unloadErr := s.engine.Unload(handle); unloadErr != nil {
+			s.logger.Warn("failed to unload track after duration error", slog.Any("error", unloadErr))
+		}
 		return err
 	}
 
@@ -101,7 +112,7 @@ func (s *PlaybackService) LoadTrack(track domain.MusicTrack, index int) error {
 	s.manualStop = false
 	s.hasPlayed = false
 
-	fmt.Printf("DEBUG: LoadTrack() succeeded, currentHandle set to %d\n", s.currentHandle)
+	s.logger.Debug("loadTrack succeeded", slog.Int64("handle", int64(s.currentHandle)))
 
 	// Publish event
 	s.bus.Publish(domain.NewTrackLoadedEvent(track, handle, duration, index))
@@ -114,27 +125,27 @@ func (s *PlaybackService) Play() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	fmt.Println("DEBUG: Play() called")
+	s.logger.Debug("play called")
 
 	if s.currentHandle == domain.InvalidTrackHandle {
-		fmt.Println("DEBUG: Play() failed - invalid track handle")
+		s.logger.Debug("play failed - invalid track handle")
 		return domain.ErrInvalidTrackHandle
 	}
 
-	fmt.Printf("DEBUG: Play() attempting with handle %d\n", s.currentHandle)
+	s.logger.Debug("play attempting", slog.Int64("handle", int64(s.currentHandle)))
 
 	// Check the current status
 	status, err := s.engine.Status(s.currentHandle)
 	if err != nil {
-		fmt.Printf("DEBUG: Play() failed - status check error: %v\n", err)
+		s.logger.Debug("play failed - status check error", slog.Any("error", err))
 		return err
 	}
 
-	fmt.Printf("DEBUG: Current status: %v\n", status)
+	s.logger.Debug("current status", slog.Any("status", status))
 
 	// Already playing
 	if status == domain.StatusPlaying {
-		fmt.Println("DEBUG: Already playing, returning")
+		s.logger.Debug("already playing, returning")
 		return nil
 	}
 
@@ -142,11 +153,11 @@ func (s *PlaybackService) Play() error {
 	s.manualStop = false
 	s.hasPlayed = true
 	if err := s.engine.Play(s.currentHandle); err != nil {
-		fmt.Printf("DEBUG: Play() failed - engine.Play error: %v\n", err)
+		s.logger.Debug("play failed - engine.Play error", slog.Any("error", err))
 		return err
 	}
 
-	fmt.Println("DEBUG: Play() succeeded, publishing event")
+	s.logger.Debug("play succeeded, publishing event")
 
 	// Publish event
 	if s.currentTrack != nil {
@@ -166,7 +177,10 @@ func (s *PlaybackService) Pause() error {
 	}
 
 	// Get the current position before pausing
-	position, _ := s.engine.Position(s.currentHandle)
+	position, err := s.engine.Position(s.currentHandle)
+	if err != nil {
+		position = 0 // Default to 0 if position unavailable
+	}
 
 	if err := s.engine.Pause(s.currentHandle); err != nil {
 		return err
@@ -333,7 +347,10 @@ func (s *PlaybackService) Seek(position time.Duration) error {
 
 	// Publish progress event with new position
 	if s.currentTrack != nil {
-		duration, _ := s.engine.Duration(s.currentHandle)
+		duration, err := s.engine.Duration(s.currentHandle)
+		if err != nil {
+			duration = 0 // Default to 0 if duration unavailable
+		}
 		s.bus.Publish(domain.NewTrackProgressEvent(position, duration))
 	}
 
@@ -486,14 +503,21 @@ func (s *PlaybackService) handleTrackFinishedWithLock() {
 
 	if shouldLoop {
 		// Stop internal (expects write lock)
-		s.stopInternal()
+		if err := s.stopInternal(); err != nil {
+			s.logger.Warn("failed to stop track in loop", slog.Any("error", err))
+		}
 
 		// Release lock before calling public methods
 		s.mu.Unlock()
 
 		// Call public methods (they acquire their own locks)
-		s.LoadTrack(track, index)
-		s.Play()
+		if err := s.LoadTrack(track, index); err != nil {
+			s.logger.Warn("failed to reload track in loop", slog.Any("error", err))
+			return
+		}
+		if err := s.Play(); err != nil {
+			s.logger.Warn("failed to play track in loop", slog.Any("error", err))
+		}
 
 		// Lock already released
 	} else {

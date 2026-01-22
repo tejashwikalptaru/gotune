@@ -11,17 +11,19 @@ import (
 	"github.com/tejashwikalptaru/gotune/internal/adapter/audio/mock"
 	"github.com/tejashwikalptaru/gotune/internal/adapter/eventbus"
 	"github.com/tejashwikalptaru/gotune/internal/domain"
+	"github.com/tejashwikalptaru/gotune/internal/logger"
 )
 
 // Helper to create a test library service
-func newTestLibraryService() (*LibraryService, *mock.Engine, *eventbus.SyncEventBus) {
+func newTestLibraryService() (*LibraryService, *eventbus.SyncEventBus) {
 	engine := mock.NewEngine()
 	engine.Initialize(-1, 44100, 0)
 
 	bus := eventbus.NewSyncEventBus()
-	service := NewLibraryService(engine, bus)
+	testLogger := logger.NewTestLogger()
+	service := NewLibraryService(testLogger, engine, bus)
 
-	return service, engine, bus
+	return service, bus
 }
 
 // Helper to create a temporary test directory with audio files
@@ -64,7 +66,7 @@ func cleanupTestFolder(dir string) {
 }
 
 func TestLibraryService_IsFormatSupported(t *testing.T) {
-	service, _, _ := newTestLibraryService()
+	service, _ := newTestLibraryService()
 	defer service.Shutdown()
 
 	// Supported formats
@@ -83,7 +85,7 @@ func TestLibraryService_IsFormatSupported(t *testing.T) {
 }
 
 func TestLibraryService_GetSupportedFormats(t *testing.T) {
-	service, _, _ := newTestLibraryService()
+	service, _ := newTestLibraryService()
 	defer service.Shutdown()
 
 	formats := service.GetSupportedFormats()
@@ -104,7 +106,7 @@ func TestLibraryService_GetSupportedFormats(t *testing.T) {
 }
 
 func TestLibraryService_ExtractMetadata(t *testing.T) {
-	service, _, _ := newTestLibraryService()
+	service, _ := newTestLibraryService()
 	defer service.Shutdown()
 
 	// Create a test file
@@ -125,7 +127,7 @@ func TestLibraryService_ExtractMetadata(t *testing.T) {
 }
 
 func TestLibraryService_ExtractMetadata_UnsupportedFormat(t *testing.T) {
-	service, _, _ := newTestLibraryService()
+	service, _ := newTestLibraryService()
 	defer service.Shutdown()
 
 	tmpDir := createTestMusicFolder(t)
@@ -139,7 +141,7 @@ func TestLibraryService_ExtractMetadata_UnsupportedFormat(t *testing.T) {
 }
 
 func TestLibraryService_ExtractMetadata_FileNotFound(t *testing.T) {
-	service, _, _ := newTestLibraryService()
+	service, _ := newTestLibraryService()
 	defer service.Shutdown()
 
 	// Try to extract from a non-existent file
@@ -148,7 +150,7 @@ func TestLibraryService_ExtractMetadata_FileNotFound(t *testing.T) {
 }
 
 func TestLibraryService_ScanFiles(t *testing.T) {
-	service, _, bus := newTestLibraryService()
+	service, bus := newTestLibraryService()
 	defer service.Shutdown()
 
 	tmpDir := createTestMusicFolder(t)
@@ -180,7 +182,7 @@ func TestLibraryService_ScanFiles(t *testing.T) {
 }
 
 func TestLibraryService_ScanFolder(t *testing.T) {
-	service, _, bus := newTestLibraryService()
+	service, bus := newTestLibraryService()
 	defer service.Shutdown()
 
 	tmpDir := createTestMusicFolder(t)
@@ -215,7 +217,7 @@ func TestLibraryService_ScanFolder(t *testing.T) {
 }
 
 func TestLibraryService_ScanFolder_NonExistentFolder(t *testing.T) {
-	service, _, _ := newTestLibraryService()
+	service, _ := newTestLibraryService()
 	defer service.Shutdown()
 
 	// Try to scan a non-existent folder
@@ -227,7 +229,7 @@ func TestLibraryService_ScanFolder_NonExistentFolder(t *testing.T) {
 }
 
 func TestLibraryService_CancelScan(t *testing.T) {
-	service, _, _ := newTestLibraryService()
+	service, _ := newTestLibraryService()
 	defer service.Shutdown()
 
 	tmpDir := createTestMusicFolder(t)
@@ -262,7 +264,7 @@ func TestLibraryService_CancelScan(t *testing.T) {
 }
 
 func TestLibraryService_CancelScan_NoScanInProgress(t *testing.T) {
-	service, _, _ := newTestLibraryService()
+	service, _ := newTestLibraryService()
 	defer service.Shutdown()
 
 	// Try to cancel when no scan is running
@@ -271,7 +273,7 @@ func TestLibraryService_CancelScan_NoScanInProgress(t *testing.T) {
 }
 
 func TestLibraryService_IsScanning(t *testing.T) {
-	service, _, _ := newTestLibraryService()
+	service, _ := newTestLibraryService()
 	defer service.Shutdown()
 
 	tmpDir := createTestMusicFolder(t)
@@ -295,7 +297,7 @@ func TestLibraryService_IsScanning(t *testing.T) {
 }
 
 func TestLibraryService_ScanFolder_ConcurrentScan(t *testing.T) {
-	service, _, _ := newTestLibraryService()
+	service, _ := newTestLibraryService()
 	defer service.Shutdown()
 
 	tmpDir := createTestMusicFolder(t)
@@ -322,7 +324,7 @@ func TestLibraryService_ScanFolder_ConcurrentScan(t *testing.T) {
 }
 
 func TestLibraryService_Shutdown(t *testing.T) {
-	service, _, _ := newTestLibraryService()
+	service, _ := newTestLibraryService()
 
 	tmpDir := createTestMusicFolder(t)
 	defer cleanupTestFolder(tmpDir)

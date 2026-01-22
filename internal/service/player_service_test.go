@@ -10,14 +10,16 @@ import (
 	"github.com/tejashwikalptaru/gotune/internal/adapter/audio/mock"
 	"github.com/tejashwikalptaru/gotune/internal/adapter/eventbus"
 	"github.com/tejashwikalptaru/gotune/internal/domain"
+	"github.com/tejashwikalptaru/gotune/internal/logger"
 )
 
 // Helper to create a test playback service
 func newTestPlaybackService() (*PlaybackService, *mock.Engine, *eventbus.SyncEventBus) {
 	engine := mock.NewEngine()
 	bus := eventbus.NewSyncEventBus()
+	testLogger := logger.NewTestLogger()
 
-	service := NewPlaybackService(engine, bus)
+	service := NewPlaybackService(testLogger, engine, bus)
 
 	return service, engine, bus
 }

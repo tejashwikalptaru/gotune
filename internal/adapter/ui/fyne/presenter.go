@@ -4,6 +4,7 @@ package fyne
 
 import (
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -54,6 +55,9 @@ type UIView interface {
 //
 // Thread-safety: All operations are thread-safe via sync.RWMutex.
 type Presenter struct {
+	// Dependencies
+	logger *slog.Logger
+
 	// Services (injected)
 	playbackService   *service.PlaybackService
 	playlistService   *service.PlaylistService
@@ -79,6 +83,7 @@ type Presenter struct {
 
 // NewPresenter creates a new presenter.
 func NewPresenter(
+	logger *slog.Logger,
 	playbackService *service.PlaybackService,
 	playlistService *service.PlaylistService,
 	libraryService *service.LibraryService,
@@ -87,6 +92,7 @@ func NewPresenter(
 	view UIView,
 ) *Presenter {
 	p := &Presenter{
+		logger:            logger,
 		playbackService:   playbackService,
 		playlistService:   playlistService,
 		libraryService:    libraryService,
@@ -364,7 +370,7 @@ func (p *Presenter) OnPlayClicked() {
 
 	if err != nil {
 		// Log error for debugging
-		fmt.Printf("ERROR: Play/Pause failed: %v\n", err)
+		p.logger.Error("play/pause failed", slog.Any("error", err))
 
 		// Show error to the user
 		p.view.ShowNotification("Playback Error",
@@ -375,7 +381,7 @@ func (p *Presenter) OnPlayClicked() {
 // OnStopClicked handle, the stop button click.
 func (p *Presenter) OnStopClicked() {
 	if err := p.playbackService.Stop(); err != nil {
-		fmt.Printf("ERROR: Stop failed: %v\n", err)
+		p.logger.Error("stop failed", slog.Any("error", err))
 		p.view.ShowNotification("Playback Error",
 			fmt.Sprintf("Failed to stop playback: %v", err))
 	}
@@ -384,7 +390,7 @@ func (p *Presenter) OnStopClicked() {
 // OnNextClicked handles, the next button click.
 func (p *Presenter) OnNextClicked() {
 	if err := p.playlistService.PlayNext(); err != nil {
-		fmt.Printf("ERROR: Next track failed: %v\n", err)
+		p.logger.Error("next track failed", slog.Any("error", err))
 		p.view.ShowNotification("Playlist Error",
 			fmt.Sprintf("Failed to play next track: %v", err))
 	}
@@ -393,7 +399,7 @@ func (p *Presenter) OnNextClicked() {
 // OnPreviousClicked handles the previous button click.
 func (p *Presenter) OnPreviousClicked() {
 	if err := p.playlistService.PlayPrevious(); err != nil {
-		fmt.Printf("ERROR: Previous track failed: %v\n", err)
+		p.logger.Error("previous track failed", slog.Any("error", err))
 		p.view.ShowNotification("Playlist Error",
 			fmt.Sprintf("Failed to play previous track: %v", err))
 	}
@@ -404,7 +410,7 @@ func (p *Presenter) OnVolumeChanged(volume float64) {
 	// Normalize from 0-100 to 0.0-1.0
 	normalized := volume / 100.0
 	if err := p.playbackService.SetVolume(normalized); err != nil {
-		fmt.Printf("ERROR: Volume change failed: %v\n", err)
+		p.logger.Error("volume change failed", slog.Any("error", err))
 		p.view.ShowNotification("Volume Error",
 			fmt.Sprintf("Failed to change volume: %v", err))
 	}
@@ -430,7 +436,7 @@ func (p *Presenter) OnSeekRequested(position float64) {
 	// Convert seconds to time.Duration
 	positionDuration := time.Duration(position * float64(time.Second))
 	if err := p.playbackService.Seek(positionDuration); err != nil {
-		fmt.Printf("ERROR: Seek failed: %v\n", err)
+		p.logger.Error("seek failed", slog.Any("error", err))
 		p.view.ShowNotification("Seek Error",
 			fmt.Sprintf("Failed to seek: %v", err))
 	}

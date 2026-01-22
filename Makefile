@@ -1,4 +1,4 @@
-.PHONY: build build-demo build-all test test-race create-package prepare-lib bundle-lib clean package
+.PHONY: build build-demo build-all test test-race create-package prepare-lib bundle-lib fix-rpath clean package execute run
 
 # Detect operating system for library paths
 UNAME_S := $(shell uname -s)
@@ -8,18 +8,21 @@ UNAME_M := $(shell uname -m)
 ifeq ($(UNAME_S),Darwin)
     LIB_PATH_VAR := DYLD_LIBRARY_PATH
     LIB_PATH := $(PWD)/build/libs/darwin
+    LIB_FILE := libbass.dylib
 else ifeq ($(UNAME_S),Linux)
     LIB_PATH_VAR := LD_LIBRARY_PATH
     LIB_PATH := $(PWD)/build/libs/linux/$(UNAME_M)
+    LIB_FILE := libbass.so
 else
     # Windows - requires different approach
     LIB_PATH_VAR := PATH
     LIB_PATH := $(PWD)/build/libs/windows/x64
+    LIB_FILE := bass.dll
 endif
 
 # Production build
 build:
-	go build -o build/gotune ./cmd
+	go build -o build/gotune ./
 
 # Run tests
 test:
@@ -36,20 +39,42 @@ execute:
 # Build and run production
 run: build execute
 
-create-package:
-	fyne package -name GoTune -icon Icon.png appVersion 0.0.1
+install-fyne:
+	go install fyne.io/fyne/v2/cmd/fyne@latest
 
+create-package:
+	fyne package
+
+# Updated: Copies lib to Contents/MacOS so @executable_path finds it
 bundle-lib:
-	cp -r ./libs GoTune.app/Contents/libs
+ifeq ($(UNAME_S),Darwin)
+	@echo "Bundling $(LIB_FILE) into App Bundle..."
+	cp "$(LIB_PATH)/$(LIB_FILE)" "Go Tune.app/Contents/MacOS/"
+	# Optional: Remove quarantine if downloaded from web (prevents security warning)
+	# xattr -d com.apple.quarantine "Go Tune.app/Contents/MacOS/$(LIB_FILE)" || true
+else
+	@echo "Bundle logic for $(UNAME_S) not implemented yet"
+endif
 
 clean:
 	rm -f build/gotune build/gotune-demo build/gotune-*
 
-package: create-package bundle-lib clean
+# Add @executable_path to rpath so the app can find bundled dylibs
+fix-rpath:
+ifeq ($(UNAME_S),Darwin)
+	@echo "Adding @executable_path rpath to executable..."
+	install_name_tool -add_rpath @executable_path "Go Tune.app/Contents/MacOS/gotune"
+endif
 
+# Full package flow
+package: create-package fix-rpath bundle-lib
+	@echo "Package created successfully: Go Tune.app"
 
+# -------------------------------------------------------------------------
 # Linting
+# -------------------------------------------------------------------------
 .PHONY: lint lint-ci lint-fix lint-install lint-all deadcode deadcode-unfiltered deadcode-test
+
 lint:
 	golangci-lint run
 
@@ -62,10 +87,9 @@ lint-fix:
 	golangci-lint run --fix
 
 # Check for unreachable (dead) code including exported functions not used outside their package
-# Excludes core packages: api/base, internal/core, internal/observability, internal/repo, internal/transport
 deadcode:
 	@which deadcode > /dev/null || (echo "Installing deadcode..." && go install golang.org/x/tools/cmd/deadcode@latest)
-	deadcode ./... #| grep -vE '(api/base|internal/core|internal/observability|internal/repo|internal/transport)' || true
+	deadcode ./...
 
 # Check for dead code including test executables
 deadcode-test:
@@ -81,6 +105,5 @@ deadcode-unfiltered:
 lint-all: lint deadcode
 
 # CI Simulation
-# Simulate CI workflow locally (runs all CI checks with filtering)
 ci-local: lint deadcode build
 	@echo "✅ Local CI simulation complete"

@@ -156,3 +156,145 @@ jobs:
           name: ${{ matrix.binary }}
           path: build/${{ matrix.binary }}
           retention-days: 7
+
+  package:
+    name: Package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: [lint, test]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            goos: darwin
+            artifact_name: GoTune-macOS.zip
+            lib_path: build/libs/darwin
+            lib_file: libbass.dylib
+          - os: ubuntu-latest
+            goos: linux
+            artifact_name: GoTune-linux-amd64.tar.xz
+            lib_path: build/libs/linux/x86_64
+            lib_file: libbass.so
+          - os: windows-latest
+            goos: windows
+            artifact_name: GoTune-windows-amd64.zip
+            lib_path: build/libs/windows/x64
+            lib_file: bass.dll
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install fyne CLI
+        run: go install fyne.io/fyne/v2/cmd/fyne@latest
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libgl1-mesa-dev xorg-dev
+
+      - name: Setup BASS libraries
+        shell: bash
+        run: ./scripts/setup-libs.sh
+
+      - name: Package application (macOS)
+        if: runner.os == 'macOS'
+        env:
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/${{ matrix.lib_path }}
+        run: |
+          fyne package -os darwin -icon icon.png
+          install_name_tool -add_rpath @executable_path "Go Tune.app/Contents/MacOS/gotune"
+          cp ${{ matrix.lib_path }}/${{ matrix.lib_file }} "Go Tune.app/Contents/MacOS/"
+          zip -r "${{ matrix.artifact_name }}" "Go Tune.app"
+
+      - name: Package application (Linux)
+        if: runner.os == 'Linux'
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/${{ matrix.lib_path }}
+        run: |
+          fyne package -os linux -icon icon.png
+          mkdir -p package-tmp
+          tar -xf "Go Tune.tar.xz" -C package-tmp
+          cp ${{ matrix.lib_path }}/${{ matrix.lib_file }} package-tmp/usr/local/bin/
+          tar -cJf "${{ matrix.artifact_name }}" -C package-tmp .
+
+      - name: Package application (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:PATH = "${{ github.workspace }}\${{ matrix.lib_path }};$env:PATH"
+          fyne package -os windows -icon icon.png
+          New-Item -ItemType Directory -Force -Path package-tmp
+          Copy-Item "Go Tune.exe" package-tmp/
+          Copy-Item "${{ matrix.lib_path }}/${{ matrix.lib_file }}" package-tmp/
+          Compress-Archive -Path package-tmp/* -DestinationPath "${{ matrix.artifact_name }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}
+          retention-days: 7
+
+  comment:
+    name: PR Comment
+    runs-on: ubuntu-latest
+    needs: [build, package]
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Comment on PR with artifact links
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `## Build Artifacts
+
+            The CI build completed successfully. Download artifacts from the [workflow run](${runUrl}).
+
+            ### Binaries
+            | Platform | Download |
+            |----------|----------|
+            | macOS (amd64) | \`gotune-darwin-amd64\` |
+            | Linux (amd64) | \`gotune-linux-amd64\` |
+            | Windows (amd64) | \`gotune-windows-amd64.exe\` |
+
+            ### Packaged Apps (with bundled libs)
+            | Platform | Download |
+            |----------|----------|
+            | macOS | \`GoTune-macOS.zip\` |
+            | Linux | \`GoTune-linux-amd64.tar.xz\` |
+            | Windows | \`GoTune-windows-amd64.zip\` |
+
+            > Artifacts expire after 7 days.`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes('## Build Artifacts'));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body
+              });
+            }

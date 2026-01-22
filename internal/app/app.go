@@ -76,7 +76,7 @@ func DefaultConfig() Config {
 	loggerCfg := logger.DefaultConfig()
 	return Config{
 		AppID:        "com.gotune.app",
-		AppName:      "GoTune",
+		AppName:      "Go Tune",
 		AudioDevice:  -1,
 		SampleRate:   44100,
 		UseMockAudio: false,

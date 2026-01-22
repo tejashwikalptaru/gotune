@@ -1,11 +1,11 @@
 Website = "https://github.com/tejashwikalptaru/gotune"
 
 [Details]
-Icon = "icon.png"
+Icon = "Icon.png"
 Name = "Go Tune"
 ID = "com.gotune.app"
 Version = "0.0.1"
-Build = 13
+Build = 14
 
 [LinuxAndBSD]
 GenericName = "Music Player"

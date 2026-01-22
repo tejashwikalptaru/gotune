@@ -111,11 +111,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-15-intel    # Intel runner
+          - os: macos-15-intel
             goos: darwin
             goarch: amd64
             binary: gotune-darwin-amd64
-          - os: macos-latest      # Apple Silicon runner
+          - os: macos-latest
             goos: darwin
             goarch: arm64
             binary: gotune-darwin-arm64
@@ -170,13 +170,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-15-intel    # Intel runner
+          - os: macos-15-intel
             goos: darwin
             goarch: amd64
             artifact_name: GoTune-macOS-amd64.zip
             lib_path: build/libs/darwin
             lib_file: libbass.dylib
-          - os: macos-latest      # Apple Silicon runner
+          - os: macos-latest
             goos: darwin
             goarch: arm64
             artifact_name: GoTune-macOS-arm64.zip
@@ -234,7 +234,7 @@ jobs:
         env:
           LD_LIBRARY_PATH: ${{ github.workspace }}/${{ matrix.lib_path }}
         run: |
-          fyne package -os linux --icon icon.png
+          fyne package -os linux
           mkdir -p package-tmp
           tar -xf "Go Tune.tar.xz" -C package-tmp
           cp ${{ matrix.lib_path }}/${{ matrix.lib_file }} package-tmp/usr/local/bin/

@@ -11,7 +11,12 @@ import (
 	"github.com/tejashwikalptaru/gotune/internal/adapter/eventbus"
 	"github.com/tejashwikalptaru/gotune/internal/domain"
 	"github.com/tejashwikalptaru/gotune/internal/logger"
+	"go.uber.org/goleak"
 )
+
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m)
+}
 
 // Helper to create a test playback service
 func newTestPlaybackService() (*PlaybackService, *mock.Engine, *eventbus.SyncEventBus) {

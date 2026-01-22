@@ -33,8 +33,9 @@ type PlaybackService struct {
 	mu            sync.RWMutex
 	stopUpdate    chan struct{}
 	updateRunning bool
-	manualStop    bool // True if the user explicitly stopped playback
-	hasPlayed     bool // True if the current track has been played
+	updateWg      sync.WaitGroup // WaitGroup to wait for update goroutine to exit
+	manualStop    bool           // True if the user explicitly stopped playback
+	hasPlayed     bool           // True if the current track has been played
 }
 
 // NewPlaybackService creates a new playback service.
@@ -397,13 +398,22 @@ func (s *PlaybackService) GetState() domain.PlaybackState {
 // Shutdown stops playback and cleans up resources.
 func (s *PlaybackService) Shutdown() error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	// Stop update routine
 	if s.updateRunning {
 		close(s.stopUpdate)
 		s.updateRunning = false
 	}
+
+	// Release lock before waiting for goroutine to exit (to avoid deadlock)
+	s.mu.Unlock()
+
+	// Wait for the update goroutine to finish
+	s.updateWg.Wait()
+
+	// Acquire lock again to stop the current track
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	// Stop the current track
 	return s.stopInternal()
@@ -417,9 +427,11 @@ func (s *PlaybackService) startUpdateRoutine() {
 		return
 	}
 	s.updateRunning = true
+	s.updateWg.Add(1)
 	s.mu.Unlock()
 
 	go func() {
+		defer s.updateWg.Done()
 		ticker := time.NewTicker(s.updateInterval)
 		defer ticker.Stop()
 

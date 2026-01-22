@@ -79,6 +79,7 @@ type Presenter struct {
 	// Concurrency control
 	mu           sync.RWMutex
 	shutdownOnce sync.Once
+	progressWg   sync.WaitGroup // WaitGroup to wait for progress goroutine to exit
 }
 
 // NewPresenter creates a new presenter.
@@ -318,8 +319,10 @@ func (p *Presenter) onScanCancelled(event domain.Event) {
 
 func (p *Presenter) startProgressUpdates() {
 	p.progressTicker = time.NewTicker(250 * time.Millisecond)
+	p.progressWg.Add(1)
 
 	go func() {
+		defer p.progressWg.Done()
 		for {
 			select {
 			case <-p.progressTicker.C:
@@ -517,4 +520,7 @@ func (p *Presenter) Shutdown() {
 		// Close channel to signal goroutine to exit
 		close(p.stopProgressChan)
 	})
+
+	// Wait for the progress goroutine to finish (safe to call multiple times)
+	p.progressWg.Wait()
 }

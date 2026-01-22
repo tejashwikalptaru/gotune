@@ -6,6 +6,7 @@ require (
 	fyne.io/fyne/v2 v2.7.2
 	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8
 	github.com/stretchr/testify v1.11.1
+	go.uber.org/goleak v1.3.0
 )
 
 require (

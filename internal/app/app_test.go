@@ -5,7 +5,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
+
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m,
+		// Ignore Fyne framework goroutines that run in background
+		goleak.IgnoreAnyFunction("fyne.io/fyne/v2"),
+	)
+}
 
 func TestNewApplication(t *testing.T) {
 	config := DefaultConfig()

@@ -88,19 +88,19 @@ jobs:
       - name: Run tests (Linux)
         if: runner.os == 'Linux'
         run: |
-          ${{ matrix.lib_path_var }}=${{ github.workspace }}/${{ matrix.lib_path }} xvfb-run -a go test ./internal/... -v -count=1
+          ${{ matrix.lib_path_var }}=${{ github.workspace }}/${{ matrix.lib_path }} xvfb-run -a go test ./internal/... -v -count=1 -timeout 5m
 
       - name: Run tests (macOS)
         if: runner.os == 'macOS'
         run: |
-          ${{ matrix.lib_path_var }}=${{ github.workspace }}/${{ matrix.lib_path }} go test ./internal/... -v -count=1
+          ${{ matrix.lib_path_var }}=${{ github.workspace }}/${{ matrix.lib_path }} go test ./internal/... -v -count=1 -timeout 5m
 
       - name: Run tests (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $env:PATH = "${{ github.workspace }}\${{ matrix.lib_path }};$env:PATH"
-          go test ./internal/... -v -count=1
+          go test ./internal/... -v -count=1 -timeout 5m
 
 
   build:
@@ -234,7 +234,7 @@ jobs:
         env:
           LD_LIBRARY_PATH: ${{ github.workspace }}/${{ matrix.lib_path }}
         run: |
-          fyne package -os linux
+          fyne package -os linux --icon icon.png
           mkdir -p package-tmp
           tar -xf "Go Tune.tar.xz" -C package-tmp
           cp ${{ matrix.lib_path }}/${{ matrix.lib_file }} package-tmp/usr/local/bin/

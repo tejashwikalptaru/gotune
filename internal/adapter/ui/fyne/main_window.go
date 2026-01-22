@@ -55,6 +55,7 @@ type MainWindow struct {
 
 	// Lifecycle management
 	closeOnce sync.Once
+	scrollWg  sync.WaitGroup // WaitGroup to wait for scroll goroutine to exit
 
 	// Presenter (set after construction)
 	presenter *Presenter
@@ -290,7 +291,10 @@ func (w *MainWindow) addShortcuts() {
 // startScrollInfoRoutine starts the song info scrolling animation.
 // This should only be called after the Fyne app is fully initialized (in ShowAndRun).
 func (w *MainWindow) startScrollInfoRoutine() {
+	w.scrollWg.Add(1)
+
 	go func() {
+		defer w.scrollWg.Done()
 		ticker := time.NewTicker(500 * time.Millisecond)
 		defer ticker.Stop()
 
@@ -323,9 +327,15 @@ func (w *MainWindow) Close() {
 		// Close playlist window if open
 		w.ClosePlaylistWindow()
 
+		// Signal the scroll goroutine to stop
 		close(w.stopScroll)
-		w.window.Close()
 	})
+
+	// Wait for the scroll goroutine to finish (safe to call multiple times)
+	w.scrollWg.Wait()
+
+	// Close the window after goroutine cleanup
+	w.window.Close()
 }
 
 // GetWindow returns the underlying Fyne window.

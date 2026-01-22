@@ -88,7 +88,7 @@ jobs:
       - name: Run tests (Linux)
         if: runner.os == 'Linux'
         run: |
-          xvfb-run -a ${{ matrix.lib_path_var }}=${{ github.workspace }}/${{ matrix.lib_path }} go test ./internal/... -v -count=1
+          ${{ matrix.lib_path_var }}=${{ github.workspace }}/${{ matrix.lib_path }} xvfb-run -a go test ./internal/... -v -count=1
 
       - name: Run tests (macOS)
         if: runner.os == 'macOS'

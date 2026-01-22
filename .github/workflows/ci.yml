@@ -276,7 +276,7 @@ jobs:
             The CI build completed successfully. Download artifacts from the [workflow run](${runUrl}).
 
             ### Binaries
-            | Platform | Download |
+            | Platform | Name |
             |----------|----------|
             | macOS (Intel) | \`gotune-darwin-amd64\` |
             | macOS (Apple Silicon) | \`gotune-darwin-arm64\` |
@@ -284,7 +284,7 @@ jobs:
             | Windows (amd64) | \`gotune-windows-amd64.exe\` |
 
             ### Packaged Apps (with bundled libs)
-            | Platform | Download |
+            | Platform | Name |
             |----------|----------|
             | macOS (Intel) | \`GoTune-macOS-amd64.zip\` |
             | macOS (Apple Silicon) | \`GoTune-macOS-arm64.zip\` |

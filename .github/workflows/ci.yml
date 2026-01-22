@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: '1.25'
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v2.6.2
+
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            lib_path_var: LD_LIBRARY_PATH
+            lib_path: build/libs/linux/x86_64
+          - os: macos-latest
+            lib_path_var: DYLD_LIBRARY_PATH
+            lib_path: build/libs/darwin
+          - os: windows-latest
+            lib_path_var: PATH
+            lib_path: build/libs/windows/x64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev
+
+      - name: Setup BASS libraries
+        shell: bash
+        run: ./scripts/setup-libs.sh
+
+      - name: Run tests (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          ${{ matrix.lib_path_var }}=${{ github.workspace }}/${{ matrix.lib_path }} go test ./internal/... -v -count=1
+
+      - name: Run tests (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:PATH = "${{ github.workspace }}\${{ matrix.lib_path }};$env:PATH"
+          go test ./internal/... -v -count=1
+
+  build:
+    name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ${{ matrix.os }}
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            binary: gotune-darwin-amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            binary: gotune-linux-amd64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            binary: gotune-windows-amd64.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev
+
+      - name: Setup BASS libraries
+        shell: bash
+        run: ./scripts/setup-libs.sh
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 1
+        run: go build -o build/${{ matrix.binary }} ./cmd
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.binary }}
+          path: build/${{ matrix.binary }}
+          retention-days: 7

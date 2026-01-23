@@ -24,21 +24,27 @@ type Visualizer struct {
 	mu         sync.RWMutex
 
 	// Visual configuration
-	barWidth   int
-	barGap     int
 	capHeight  int
 	capFalloff float32 // Pixels per update the cap falls
+	minGap     int     // Minimum gap between bars
+
+	// Padding configuration
+	paddingTop   float32
+	paddingLeft  float32
+	paddingRight float32
 }
 
 // NewVisualizer creates a new visualizer widget with the specified number of bars.
 func NewVisualizer(numBars int) *Visualizer {
 	v := &Visualizer{
-		numBars:    numBars,
-		capHeights: make([]float32, numBars),
-		barWidth:   10,
-		barGap:     2,
-		capHeight:  2,
-		capFalloff: 2.0, // Pixels per frame the cap falls
+		numBars:      numBars,
+		capHeights:   make([]float32, numBars),
+		capHeight:    2,
+		capFalloff:   2.0, // Pixels per frame the cap falls
+		minGap:       2,   // Minimum gap between bars
+		paddingTop:   10,
+		paddingLeft:  10,
+		paddingRight: 10,
 	}
 
 	v.raster = canvas.NewRaster(v.draw)
@@ -53,9 +59,9 @@ func (v *Visualizer) CreateRenderer() fyne.WidgetRenderer {
 }
 
 // MinSize returns the minimum size of the visualizer.
+// Returns a minimal size so the widget expands to fill available space.
 func (v *Visualizer) MinSize() fyne.Size {
-	minWidth := float32(v.numBars*(v.barWidth+v.barGap) - v.barGap)
-	return fyne.NewSize(minWidth, 100)
+	return fyne.NewSize(0, 0)
 }
 
 // UpdateFFT updates the visualizer with new FFT data.
@@ -89,12 +95,45 @@ func (v *Visualizer) draw(w, h int) image.Image {
 		return img
 	}
 
-	// Calculate bar heights using logarithmic frequency distribution
-	barHeights := v.calculateBarHeights(fftData, h)
+	// Apply padding to get an effective drawing area
+	paddingLeft := int(v.paddingLeft)
+	paddingRight := int(v.paddingRight)
+	paddingTop := int(v.paddingTop)
 
-	// Calculate bar positions
-	totalBarWidth := v.barWidth + v.barGap
-	startX := (w - v.numBars*totalBarWidth + v.barGap) / 2 // Center bars
+	effectiveWidth := w - paddingLeft - paddingRight
+	effectiveHeight := h - paddingTop
+
+	if effectiveWidth <= 0 || effectiveHeight <= 0 {
+		return img
+	}
+
+	// Calculate bar dimensions dynamically based on available space
+	numBars := v.numBars
+	totalGapWidth := (numBars - 1) * v.minGap
+	availableBarWidth := effectiveWidth - totalGapWidth
+
+	barWidth := availableBarWidth / numBars
+	if barWidth < 1 {
+		barWidth = 1
+	}
+
+	// Recalculate gap to distribute remaining space evenly
+	actualGap := v.minGap
+	if numBars > 1 {
+		remainingSpace := effectiveWidth - (barWidth * numBars)
+		actualGap = remainingSpace / (numBars - 1)
+		if actualGap < v.minGap {
+			actualGap = v.minGap
+		}
+	}
+
+	// Calculate bar heights using logarithmic frequency distribution
+	barHeights := v.calculateBarHeights(fftData, effectiveHeight)
+
+	// Calculate starting X position (with left padding)
+	totalBarWidth := barWidth + actualGap
+	usedWidth := numBars*barWidth + (numBars-1)*actualGap
+	startX := paddingLeft + (effectiveWidth-usedWidth)/2 // Center bars within an effective area
 
 	// Update cap heights with falling animation
 	v.mu.Lock()
@@ -117,12 +156,12 @@ func (v *Visualizer) draw(w, h int) image.Image {
 		barX := startX + i*totalBarWidth
 
 		// Draw the bar with a gradient
-		for y := 0; y < barH && y < h; y++ {
+		for y := 0; y < barH && y < effectiveHeight; y++ {
 			screenY := h - 1 - y
-			col := v.getGradientColor(float64(y) / float64(h))
+			col := v.getGradientColor(float64(y) / float64(effectiveHeight))
 
-			for x := barX; x < barX+v.barWidth && x < w; x++ {
-				if x >= 0 {
+			for x := barX; x < barX+barWidth && x < w-paddingRight; x++ {
+				if x >= paddingLeft {
 					img.Set(x, screenY, col)
 				}
 			}
@@ -130,11 +169,11 @@ func (v *Visualizer) draw(w, h int) image.Image {
 
 		// Draw falling cap (white)
 		capY := int(caps[i])
-		if capY > 0 && capY < h {
+		if capY > 0 && capY < effectiveHeight {
 			screenY := h - 1 - capY
-			for cy := 0; cy < v.capHeight && screenY+cy < h && screenY+cy >= 0; cy++ {
-				for x := barX; x < barX+v.barWidth && x < w; x++ {
-					if x >= 0 {
+			for cy := 0; cy < v.capHeight && screenY+cy < h && screenY+cy >= paddingTop; cy++ {
+				for x := barX; x < barX+barWidth && x < w-paddingRight; x++ {
+					if x >= paddingLeft {
 						img.Set(x, screenY+cy, color.White)
 					}
 				}

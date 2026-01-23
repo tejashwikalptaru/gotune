@@ -320,8 +320,10 @@ func (p *Presenter) onScanCancelled(event domain.Event) {
 func (p *Presenter) startProgressUpdates() {
 	p.progressTicker = time.NewTicker(250 * time.Millisecond)
 	p.progressWg.Add(1)
+	started := make(chan struct{}) // Signal when goroutine has started
 
 	go func() {
+		close(started) // Signal that goroutine has started
 		defer p.progressWg.Done()
 		for {
 			select {
@@ -332,6 +334,8 @@ func (p *Presenter) startProgressUpdates() {
 			}
 		}
 	}()
+
+	<-started // Wait for goroutine to actually start
 }
 
 func (p *Presenter) updateProgress() {

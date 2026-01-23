@@ -1,6 +1,8 @@
 package service
 
 import (
+	"io"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -10,9 +12,13 @@ import (
 	"github.com/tejashwikalptaru/gotune/internal/adapter/audio/mock"
 	"github.com/tejashwikalptaru/gotune/internal/adapter/eventbus"
 	"github.com/tejashwikalptaru/gotune/internal/domain"
-	"github.com/tejashwikalptaru/gotune/internal/logger"
 	"go.uber.org/goleak"
 )
+
+// testLogger returns a logger that discards output for tests
+func testLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
 func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m)
@@ -22,9 +28,8 @@ func TestMain(m *testing.M) {
 func newTestPlaybackService() (*PlaybackService, *mock.Engine, *eventbus.SyncEventBus) {
 	engine := mock.NewEngine()
 	bus := eventbus.NewSyncEventBus()
-	testLogger := logger.NewTestLogger()
 
-	service := NewPlaybackService(testLogger, engine, bus)
+	service := NewPlaybackService(testLogger(), engine, bus)
 
 	return service, engine, bus
 }

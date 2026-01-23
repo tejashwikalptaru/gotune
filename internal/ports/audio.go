@@ -139,12 +139,3 @@ type AudioEngineConfig struct {
 	// Flags are engine-specific initialization flags
 	Flags int
 }
-
-// DefaultAudioEngineConfig returns a configuration with sensible defaults.
-func DefaultAudioEngineConfig() *AudioEngineConfig {
-	return &AudioEngineConfig{
-		Device:    -1,    // Default device
-		Frequency: 44100, // CD quality
-		Flags:     0,     // Default flags (set by implementation)
-	}
-}

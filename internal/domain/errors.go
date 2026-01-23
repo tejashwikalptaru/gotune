@@ -98,35 +98,6 @@ func NewAudioEngineError(op, path string, code int, message string, err error) *
 	}
 }
 
-// RepositoryError represents an error from a repository.
-// This wraps persistence layer errors with additional context.
-type RepositoryError struct {
-	Op      string // Operation that failed (e.g., "save", "load", "delete")
-	Type    string // Repository type (e.g., "history", "playlist", "preferences")
-	Message string // Error message
-	Err     error  // Underlying error
-}
-
-// Error implements the error interface.
-func (e *RepositoryError) Error() string {
-	return fmt.Sprintf("repository %s.%s failed: %s", e.Type, e.Op, e.Message)
-}
-
-// Unwrap returns the underlying error.
-func (e *RepositoryError) Unwrap() error {
-	return e.Err
-}
-
-// NewRepositoryError creates a new RepositoryError.
-func NewRepositoryError(op, repoType, message string, err error) *RepositoryError {
-	return &RepositoryError{
-		Op:      op,
-		Type:    repoType,
-		Message: message,
-		Err:     err,
-	}
-}
-
 // ValidationError represents a validation error.
 type ValidationError struct {
 	Field   string      // Field that failed validation

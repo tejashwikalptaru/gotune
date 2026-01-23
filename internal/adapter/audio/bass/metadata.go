@@ -175,38 +175,3 @@ func generateTrackID() string {
 	}
 	return fmt.Sprintf("track-%s", hex.EncodeToString(b))
 }
-
-// SupportedFormats returns a list of supported audio format extensions.
-func SupportedFormats() []string {
-	return []string{
-		// Common formats
-		".mp3", ".mp2", ".mp1",
-		".ogg", ".oga",
-		".wav", ".aif", ".aiff",
-		".flac", ".fla",
-		".aac", ".m4a", ".m4b", ".mp4",
-		".wma",
-		".wv",          // WavPack
-		".ape", ".mac", // APE
-		".mpc", ".mp+", ".mpp", // Musepack
-		".ofr", ".ofs", // OptimFROG
-		".tta",         // TTA
-		".adx", ".aix", // ADX
-		".ac3", // AC3
-		".cda", // CD Audio
-
-		// MOD/Tracker formats
-		".mod", ".xm", ".it", ".s3m", ".mtm", ".umx", ".mo3",
-	}
-}
-
-// IsFormatSupported checks if a file format is supported.
-func IsFormatSupported(filePath string) bool {
-	ext := strings.ToLower(filepath.Ext(filePath))
-	for _, supported := range SupportedFormats() {
-		if ext == supported {
-			return true
-		}
-	}
-	return false
-}

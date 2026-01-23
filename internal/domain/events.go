@@ -48,13 +48,6 @@ const (
 	EventScanProgress  EventType = "scan.progress"
 	EventScanCompleted EventType = "scan.completed"
 	EventScanCancelled EventType = "scan.cancelled"
-
-	// Error events
-	EventErrorOccurred EventType = "error.occurred"
-
-	// Application lifecycle events
-	EventApplicationStarted  EventType = "app.started"
-	EventApplicationStopping EventType = "app.stopping"
 )
 
 // EventHandler is a function that handles events.
@@ -394,61 +387,6 @@ func NewScanCancelledEvent(reason string) ScanCancelledEvent {
 	return ScanCancelledEvent{
 		baseEvent: newBaseEvent(),
 		Reason:    reason,
-	}
-}
-
-// ErrorOccurredEvent is published when an error occurs.
-type ErrorOccurredEvent struct {
-	baseEvent
-	Error   error
-	Context string // Context about where/why the error occurred
-}
-
-// Type returns the event type.
-func (e ErrorOccurredEvent) Type() EventType {
-	return EventErrorOccurred
-}
-
-// NewErrorOccurredEvent creates a new ErrorOccurredEvent.
-func NewErrorOccurredEvent(err error, context string) ErrorOccurredEvent {
-	return ErrorOccurredEvent{
-		baseEvent: newBaseEvent(),
-		Error:     err,
-		Context:   context,
-	}
-}
-
-// ApplicationStartedEvent is published when the application starts.
-type ApplicationStartedEvent struct {
-	baseEvent
-}
-
-// Type returns the event type.
-func (e ApplicationStartedEvent) Type() EventType {
-	return EventApplicationStarted
-}
-
-// NewApplicationStartedEvent creates a new ApplicationStartedEvent.
-func NewApplicationStartedEvent() ApplicationStartedEvent {
-	return ApplicationStartedEvent{
-		baseEvent: newBaseEvent(),
-	}
-}
-
-// ApplicationStoppingEvent is published when the application is shutting down.
-type ApplicationStoppingEvent struct {
-	baseEvent
-}
-
-// Type returns the event type.
-func (e ApplicationStoppingEvent) Type() EventType {
-	return EventApplicationStopping
-}
-
-// NewApplicationStoppingEvent creates a new ApplicationStoppingEvent.
-func NewApplicationStoppingEvent() ApplicationStoppingEvent {
-	return ApplicationStoppingEvent{
-		baseEvent: newBaseEvent(),
 	}
 }
 

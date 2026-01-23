@@ -428,9 +428,11 @@ func (s *PlaybackService) startUpdateRoutine() {
 	}
 	s.updateRunning = true
 	s.updateWg.Add(1)
+	started := make(chan struct{}) // Signal when goroutine has started
 	s.mu.Unlock()
 
 	go func() {
+		close(started) // Signal that goroutine has started
 		defer s.updateWg.Done()
 		ticker := time.NewTicker(s.updateInterval)
 		defer ticker.Stop()
@@ -445,6 +447,8 @@ func (s *PlaybackService) startUpdateRoutine() {
 			}
 		}
 	}()
+
+	<-started // Wait for goroutine to actually start
 }
 
 // publishProgressUpdate publishes a progress event if a track is playing.

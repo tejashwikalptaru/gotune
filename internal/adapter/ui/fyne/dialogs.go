@@ -3,7 +3,6 @@ package fyne
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/storage"
 )
 
 // FileDialog is a helper for creating file open dialogs.
@@ -69,13 +68,4 @@ func (d *FolderDialog) Show() {
 			d.callback(folderPath)
 		}
 	}, d.window)
-}
-
-// Helper to create a file filter for audio files.
-func NewAudioFileFilter() storage.FileFilter {
-	return storage.NewExtensionFileFilter([]string{
-		".mp3", ".flac", ".wav", ".ogg", ".m4a",
-		".aac", ".wma", ".ape", ".mpc", ".tta",
-		".mod", ".xm", ".it", ".s3m",
-	})
 }

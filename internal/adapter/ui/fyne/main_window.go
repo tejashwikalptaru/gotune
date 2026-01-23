@@ -292,8 +292,10 @@ func (w *MainWindow) addShortcuts() {
 // This should only be called after the Fyne app is fully initialized (in ShowAndRun).
 func (w *MainWindow) startScrollInfoRoutine() {
 	w.scrollWg.Add(1)
+	started := make(chan struct{}) // Signal when goroutine has started
 
 	go func() {
+		close(started) // Signal that goroutine has started
 		defer w.scrollWg.Done()
 		ticker := time.NewTicker(500 * time.Millisecond)
 		defer ticker.Stop()
@@ -311,6 +313,8 @@ func (w *MainWindow) startScrollInfoRoutine() {
 			}
 		}
 	}()
+
+	<-started // Wait for goroutine to actually start
 }
 
 // ShowAndRun shows the window and runs the application.

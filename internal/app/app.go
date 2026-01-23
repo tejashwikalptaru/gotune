@@ -281,24 +281,3 @@ func (a *Application) saveState() error {
 
 	return nil
 }
-
-// GetServices returns the service instances.
-// This is useful for testing or advanced usage.
-func (a *Application) GetServices() (
-	*service.PlaybackService,
-	*service.PlaylistService,
-	*service.LibraryService,
-	*service.PreferenceService,
-) {
-	return a.playbackService, a.playlistService, a.libraryService, a.preferenceService
-}
-
-// GetEventBus returns the event bus instance.
-func (a *Application) GetEventBus() ports.EventBus {
-	return a.eventBus
-}
-
-// GetFyneApp returns the Fyne application instance.
-func (a *Application) GetFyneApp() fyne.App {
-	return a.fyneApp
-}

@@ -438,5 +438,35 @@ func (m *Engine) SimulateProgress(handle domain.TrackHandle, delta time.Duration
 	return nil
 }
 
+// GetFFTData returns mock FFT data for visualization.
+// In the mock engine, this returns a simple simulated waveform.
+func (m *Engine) GetFFTData(handle domain.TrackHandle) ([]float32, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if !m.initialized {
+		return nil, domain.ErrNotInitialized
+	}
+
+	track, exists := m.tracks[handle]
+	if !exists {
+		return nil, domain.ErrInvalidTrackHandle
+	}
+
+	// Only return data if playing
+	if track.status != domain.StatusPlaying {
+		return nil, domain.ErrFFTDataUnavailable
+	}
+
+	// Return mock FFT data (1024 values simulating frequency data)
+	data := make([]float32, 1024)
+	for i := range data {
+		// Simulate decreasing intensity at higher frequencies
+		data[i] = float32(0.5) * (1.0 - float32(i)/1024.0)
+	}
+
+	return data, nil
+}
+
 // Verify that Engine implements the AudioEngine interface
 var _ ports.AudioEngine = (*Engine)(nil)

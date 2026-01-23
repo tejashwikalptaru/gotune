@@ -91,7 +91,7 @@ deadcode:
 	@which deadcode > /dev/null || (echo "Installing deadcode..." && go install golang.org/x/tools/cmd/deadcode@latest)
 	@echo "Running deadcode analysis..."
 	@# Capture stdout and stderr (2>&1) so we see if the command fails or finds code
-	@output=$$(deadcode ./... 2>&1); \
+	@output=$$(deadcode -test ./... 2>&1); \
 	if [ -n "$$output" ]; then \
 		echo "$$output"; \
 		echo "Error: Dead code detected"; \

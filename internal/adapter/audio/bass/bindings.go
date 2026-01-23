@@ -173,6 +173,19 @@ func bassChannelGetTags(handle int64, tag Tag) string {
 	return C.GoString((*C.char)(tags))
 }
 
+// bassChannelGetData retrieves data from a channel (e.g., FFT data for visualization).
+// Returns number of bytes read, or -1 on error.
+func bassChannelGetData(handle int64, buffer []float32, length int) int {
+	if len(buffer) == 0 {
+		return -1
+	}
+	return int(C.BASS_ChannelGetData(
+		C.DWORD(handle),
+		unsafe.Pointer(&buffer[0]),
+		C.DWORD(length),
+	))
+}
+
 // createBassError creates an AudioEngineError from a BASS error code.
 func createBassError(op, path string, code C.int) error {
 	errorCode := ErrorCode(code)

@@ -459,5 +459,31 @@ func (e *Engine) GetLoadedTracksCount() int {
 	return len(e.tracks)
 }
 
+// GetFFTData retrieves FFT frequency data for visualization.
+// Uses BASS_DATA_FFT2048 for good resolution, returns 1024 float values.
+// The returned values represent frequency magnitudes from low to high frequencies.
+func (e *Engine) GetFFTData(handle domain.TrackHandle) ([]float32, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	if !e.initialized {
+		return nil, domain.ErrNotInitialized
+	}
+
+	track, exists := e.tracks[handle]
+	if !exists {
+		return nil, domain.ErrInvalidTrackHandle
+	}
+
+	// FFT2048 returns 1024 float values (half of FFT size)
+	buffer := make([]float32, 1024)
+	result := bassChannelGetData(track.handle, buffer, dataFFT2048)
+	if result == -1 {
+		return nil, domain.ErrFFTDataUnavailable
+	}
+
+	return buffer, nil
+}
+
 // Verify that Engine implements the AudioEngine interface
 var _ ports.AudioEngine = (*Engine)(nil)

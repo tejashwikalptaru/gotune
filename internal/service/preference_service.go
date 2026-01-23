@@ -18,11 +18,12 @@ type PreferenceService struct {
 	bus        ports.EventBus
 
 	// Cached preferences (for performance)
-	volume      float64
-	loopEnabled bool
-	theme       string
-	lastFolder  string
-	cacheValid  bool
+	volume            float64
+	loopEnabled       bool
+	visualizerEnabled bool
+	theme             string
+	lastFolder        string
+	cacheValid        bool
 
 	// Concurrency control
 	mu sync.RWMutex
@@ -185,6 +186,26 @@ func (s *PreferenceService) SetLastFolder(path string) error {
 	return nil
 }
 
+// GetVisualizerEnabled returns the saved visualizer enabled preference.
+func (s *PreferenceService) GetVisualizerEnabled() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.visualizerEnabled
+}
+
+// SetVisualizerEnabled saves the visualizer enabled preference.
+func (s *PreferenceService) SetVisualizerEnabled(enabled bool) error {
+	s.mu.Lock()
+	s.visualizerEnabled = enabled
+	s.mu.Unlock()
+
+	// Note: Visualizer preference saving would require extending the PreferencesRepository interface
+	// For now, we just cache it in memory
+
+	return nil
+}
+
 // ResetToDefaults resets all preferences to default values.
 func (s *PreferenceService) ResetToDefaults() error {
 	s.mu.Lock()
@@ -214,6 +235,7 @@ func (s *PreferenceService) GetAllPreferences() map[string]interface{} {
 	return map[string]interface{}{
 		"volume":      s.volume,
 		"loop":        s.loopEnabled,
+		"visualizer":  s.visualizerEnabled,
 		"theme":       s.theme,
 		"last_folder": s.lastFolder,
 	}
@@ -231,6 +253,8 @@ var _ interface {
 	SetVolume(float64) error
 	GetLoopMode() bool
 	SetLoopMode(bool) error
+	GetVisualizerEnabled() bool
+	SetVisualizerEnabled(bool) error
 	GetTheme() string
 	SetTheme(string) error
 	GetLastFolder() string

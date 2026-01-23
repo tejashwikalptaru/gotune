@@ -40,6 +40,11 @@ type UIView interface {
 	ClosePlaylistWindow()
 	IsPlaylistWindowOpen() bool
 
+	// Visualizer updates
+	UpdateVisualizer(data []float32)
+	SetVisualizerEnabled(enabled bool)
+	IsVisualizerEnabled() bool
+
 	// Notifications
 	ShowNotification(title, message string)
 }
@@ -75,6 +80,12 @@ type Presenter struct {
 	isPlaying        bool
 	progressTicker   *time.Ticker
 	stopProgressChan chan bool
+
+	// Visualizer state
+	visualizerTicker   *time.Ticker
+	stopVisualizerChan chan struct{}
+	visualizerRunning  bool
+	visualizerWg       sync.WaitGroup
 
 	// Concurrency control
 	mu           sync.RWMutex
@@ -155,6 +166,13 @@ func (p *Presenter) syncInitialState() {
 	p.view.SetVolume(state.Volume * 100.0) // Convert from 0.0-1.0 to 0-100
 	p.view.SetLoopState(state.IsLooping)
 	p.view.SetMuteState(state.IsMuted)
+
+	// Restore visualizer preference
+	visualizerEnabled := p.preferenceService.GetVisualizerEnabled()
+	p.view.SetVisualizerEnabled(visualizerEnabled)
+	if visualizerEnabled {
+		p.StartVisualizerUpdates()
+	}
 
 	// If a track is already loaded, update track info
 	if state.CurrentTrack != nil {
@@ -512,10 +530,81 @@ func (p *Presenter) GetQueue() []domain.MusicTrack {
 	return p.playlistService.GetQueue()
 }
 
+// OnVisualizerModeChanged handles visualizer mode changes from the UI.
+func (p *Presenter) OnVisualizerModeChanged(enabled bool) {
+	if enabled {
+		p.StartVisualizerUpdates()
+	} else {
+		p.StopVisualizerUpdates()
+	}
+
+	// Save preference
+	p.preferenceService.SetVisualizerEnabled(enabled)
+}
+
+// StartVisualizerUpdates starts the visualizer update loop (~30fps).
+func (p *Presenter) StartVisualizerUpdates() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.visualizerRunning {
+		return
+	}
+
+	p.visualizerRunning = true
+	p.stopVisualizerChan = make(chan struct{})
+	p.visualizerTicker = time.NewTicker(33 * time.Millisecond) // ~30fps
+	p.visualizerWg.Add(1)
+
+	go func() {
+		defer p.visualizerWg.Done()
+		for {
+			select {
+			case <-p.visualizerTicker.C:
+				p.updateVisualizer()
+			case <-p.stopVisualizerChan:
+				return
+			}
+		}
+	}()
+}
+
+// StopVisualizerUpdates stops the visualizer update loop.
+func (p *Presenter) StopVisualizerUpdates() {
+	p.mu.Lock()
+
+	if !p.visualizerRunning {
+		p.mu.Unlock()
+		return
+	}
+
+	p.visualizerRunning = false
+	if p.visualizerTicker != nil {
+		p.visualizerTicker.Stop()
+	}
+	close(p.stopVisualizerChan)
+
+	p.mu.Unlock()
+
+	// Wait for goroutine to finish
+	p.visualizerWg.Wait()
+}
+
+// updateVisualizer fetches FFT data and updates the UI.
+func (p *Presenter) updateVisualizer() {
+	data := p.playbackService.GetFFTData()
+	if data != nil {
+		p.view.UpdateVisualizer(data)
+	}
+}
+
 // Shutdown cleans up resources.
 // It's safe to call multiple times (idempotent).
 func (p *Presenter) Shutdown() {
 	p.shutdownOnce.Do(func() {
+		// Stop visualizer updates first
+		p.StopVisualizerUpdates()
+
 		// Stop the ticker first to prevent new iterations
 		if p.progressTicker != nil {
 			p.progressTicker.Stop()

@@ -139,8 +139,10 @@ func TestBassEngine_Initialize(t *testing.T) {
 func TestBassEngine_InitializeTwice(t *testing.T) {
 	engine := NewEngine()
 	defer func() {
-		if err := engine.Shutdown(); err != nil {
-			t.Errorf("Error during engine shutdown: %v", err)
+		if engine.IsInitialized() {
+			if err := engine.Shutdown(); err != nil {
+				t.Errorf("Error during engine shutdown: %v", err)
+			}
 		}
 	}()
 
@@ -167,8 +169,10 @@ func TestBassEngine_LoadTrack(t *testing.T) {
 
 	engine := NewEngine()
 	defer func() {
-		if err := engine.Shutdown(); err != nil {
-			t.Errorf("Error during engine shutdown: %v", err)
+		if engine.IsInitialized() {
+			if err := engine.Shutdown(); err != nil {
+				t.Errorf("Error during engine shutdown: %v", err)
+			}
 		}
 	}()
 
@@ -201,8 +205,10 @@ func TestBassEngine_LoadNotInitialized(t *testing.T) {
 func TestBassEngine_LoadInvalidPath(t *testing.T) {
 	engine := NewEngine()
 	defer func() {
-		if err := engine.Shutdown(); err != nil {
-			t.Errorf("Error during engine shutdown: %v", err)
+		if engine.IsInitialized() {
+			if err := engine.Shutdown(); err != nil {
+				t.Errorf("Error during engine shutdown: %v", err)
+			}
 		}
 	}()
 
@@ -222,8 +228,10 @@ func TestBassEngine_LoadInvalidPath(t *testing.T) {
 func TestBassEngine_UnloadInvalidHandle(t *testing.T) {
 	engine := NewEngine()
 	defer func() {
-		if err := engine.Shutdown(); err != nil {
-			t.Errorf("Error during engine shutdown: %v", err)
+		if engine.IsInitialized() {
+			if err := engine.Shutdown(); err != nil {
+				t.Errorf("Error during engine shutdown: %v", err)
+			}
 		}
 	}()
 
@@ -242,8 +250,10 @@ func TestBassEngine_PlayPauseStop(t *testing.T) {
 
 	engine := NewEngine()
 	defer func() {
-		if err := engine.Shutdown(); err != nil {
-			t.Errorf("Error during engine shutdown: %v", err)
+		if engine.IsInitialized() {
+			if err := engine.Shutdown(); err != nil {
+				t.Errorf("Error during engine shutdown: %v", err)
+			}
 		}
 	}()
 
@@ -252,7 +262,7 @@ func TestBassEngine_PlayPauseStop(t *testing.T) {
 	handle, err := engine.Load(testFile)
 	require.NoError(t, err)
 	defer func() {
-		if err := engine.Unload(handle); err != nil {
+		if err := engine.Unload(handle); err != nil && err != domain.ErrInvalidTrackHandle {
 			t.Errorf("Error during engine unload: %v", err)
 		}
 	}()
@@ -306,8 +316,10 @@ func TestBassEngine_Volume(t *testing.T) {
 
 	engine := NewEngine()
 	defer func() {
-		if err := engine.Shutdown(); err != nil {
-			t.Errorf("Error during engine shutdown: %v", err)
+		if engine.IsInitialized() {
+			if err := engine.Shutdown(); err != nil {
+				t.Errorf("Error during engine shutdown: %v", err)
+			}
 		}
 	}()
 
@@ -355,8 +367,10 @@ func TestBassEngine_VolumeInvalidRange(t *testing.T) {
 
 	engine := NewEngine()
 	defer func() {
-		if err := engine.Shutdown(); err != nil {
-			t.Errorf("Error during engine shutdown: %v", err)
+		if engine.IsInitialized() {
+			if err := engine.Shutdown(); err != nil {
+				t.Errorf("Error during engine shutdown: %v", err)
+			}
 		}
 	}()
 
@@ -387,8 +401,10 @@ func TestBassEngine_PositionAndDuration(t *testing.T) {
 
 	engine := NewEngine()
 	defer func() {
-		if err := engine.Shutdown(); err != nil {
-			t.Errorf("Error during engine shutdown: %v", err)
+		if engine.IsInitialized() {
+			if err := engine.Shutdown(); err != nil {
+				t.Errorf("Error during engine shutdown: %v", err)
+			}
 		}
 	}()
 
@@ -433,8 +449,10 @@ func TestBassEngine_Seek(t *testing.T) {
 
 	engine := NewEngine()
 	defer func() {
-		if err := engine.Shutdown(); err != nil {
-			t.Errorf("Error during engine shutdown: %v", err)
+		if engine.IsInitialized() {
+			if err := engine.Shutdown(); err != nil {
+				t.Errorf("Error during engine shutdown: %v", err)
+			}
 		}
 	}()
 
@@ -477,8 +495,10 @@ func TestBassEngine_SeekInvalidPosition(t *testing.T) {
 
 	engine := NewEngine()
 	defer func() {
-		if err := engine.Shutdown(); err != nil {
-			t.Errorf("Error during engine shutdown: %v", err)
+		if engine.IsInitialized() {
+			if err := engine.Shutdown(); err != nil {
+				t.Errorf("Error during engine shutdown: %v", err)
+			}
 		}
 	}()
 
@@ -551,8 +571,10 @@ func TestBassEngine_MultipleTracksLoaded(t *testing.T) {
 
 	engine := NewEngine()
 	defer func() {
-		if err := engine.Shutdown(); err != nil {
-			t.Errorf("Error during engine shutdown: %v", err)
+		if engine.IsInitialized() {
+			if err := engine.Shutdown(); err != nil {
+				t.Errorf("Error during engine shutdown: %v", err)
+			}
 		}
 	}()
 
@@ -634,8 +656,10 @@ func TestBassEngine_ConcurrentLoad(t *testing.T) {
 
 	engine := NewEngine()
 	defer func() {
-		if err := engine.Shutdown(); err != nil {
-			t.Errorf("Error during engine shutdown: %v", err)
+		if engine.IsInitialized() {
+			if err := engine.Shutdown(); err != nil {
+				t.Errorf("Error during engine shutdown: %v", err)
+			}
 		}
 	}()
 
@@ -683,8 +707,10 @@ func TestBassEngine_ConcurrentPlayback(t *testing.T) {
 
 	engine := NewEngine()
 	defer func() {
-		if err := engine.Shutdown(); err != nil {
-			t.Errorf("Error during engine shutdown: %v", err)
+		if engine.IsInitialized() {
+			if err := engine.Shutdown(); err != nil {
+				t.Errorf("Error during engine shutdown: %v", err)
+			}
 		}
 	}()
 

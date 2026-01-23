@@ -2,6 +2,8 @@ package service
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 	"sync"
 	"testing"
 
@@ -10,7 +12,6 @@ import (
 	"github.com/tejashwikalptaru/gotune/internal/adapter/audio/mock"
 	"github.com/tejashwikalptaru/gotune/internal/adapter/eventbus"
 	"github.com/tejashwikalptaru/gotune/internal/domain"
-	"github.com/tejashwikalptaru/gotune/internal/logger"
 )
 
 // Mock repositories for testing
@@ -129,18 +130,23 @@ func (ts *testServices) Shutdown() error {
 	return ts.playback.Shutdown()
 }
 
+// playlistTestLogger returns a logger that discards output for tests
+func playlistTestLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
 // Helper to create a test playlist service
 func newTestPlaylistService() *testServices {
 	engine := mock.NewEngine()
 	_ = engine.Initialize(-1, 44100, 0)
 
 	bus := eventbus.NewSyncEventBus()
-	testLogger := logger.NewTestLogger()
-	playback := NewPlaybackService(testLogger, engine, bus)
+	log := playlistTestLogger()
+	playback := NewPlaybackService(log, engine, bus)
 	plRepo := newMockPlaylistRepository()
 	histRepo := newMockHistoryRepository()
 
-	playlist := NewPlaylistService(testLogger, playback, plRepo, histRepo, bus)
+	playlist := NewPlaylistService(log, playback, plRepo, histRepo, bus)
 
 	return &testServices{
 		playlist: playlist,
@@ -639,7 +645,7 @@ func TestPlaylistService_SaveAndLoadQueue(t *testing.T) {
 	}
 
 	bus := eventbus.NewSyncEventBus()
-	testLogger := logger.NewTestLogger()
+	testLogger := playlistTestLogger()
 	playback := NewPlaybackService(testLogger, engine, bus)
 	plRepo := newMockPlaylistRepository()
 	histRepo := newMockHistoryRepository()

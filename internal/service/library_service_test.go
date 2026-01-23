@@ -1,6 +1,8 @@
 package service
 
 import (
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,8 +13,12 @@ import (
 	"github.com/tejashwikalptaru/gotune/internal/adapter/audio/mock"
 	"github.com/tejashwikalptaru/gotune/internal/adapter/eventbus"
 	"github.com/tejashwikalptaru/gotune/internal/domain"
-	"github.com/tejashwikalptaru/gotune/internal/logger"
 )
+
+// libTestLogger returns a logger that discards output for tests
+func libTestLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
 // Helper to create a test library service
 func newTestLibraryService() (*LibraryService, *eventbus.SyncEventBus) {
@@ -20,8 +26,7 @@ func newTestLibraryService() (*LibraryService, *eventbus.SyncEventBus) {
 	engine.Initialize(-1, 44100, 0)
 
 	bus := eventbus.NewSyncEventBus()
-	testLogger := logger.NewTestLogger()
-	service := NewLibraryService(testLogger, engine, bus)
+	service := NewLibraryService(libTestLogger(), engine, bus)
 
 	return service, bus
 }

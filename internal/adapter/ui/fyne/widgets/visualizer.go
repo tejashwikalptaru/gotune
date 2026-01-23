@@ -73,7 +73,7 @@ func (v *Visualizer) UpdateFFT(data []float32) {
 func (v *Visualizer) draw(w, h int) image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 
-	// Fill background with black
+	// Fill the background with black
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
 			img.Set(x, y, color.Black)
@@ -116,7 +116,7 @@ func (v *Visualizer) draw(w, h int) image.Image {
 		barH := int(barHeights[i])
 		barX := startX + i*totalBarWidth
 
-		// Draw the bar with gradient
+		// Draw the bar with a gradient
 		for y := 0; y < barH && y < h; y++ {
 			screenY := h - 1 - y
 			col := v.getGradientColor(float64(y) / float64(h))
@@ -195,7 +195,7 @@ func (v *Visualizer) calculateBarHeights(fftData []float32, height int) []float3
 
 		heights[x] = y
 
-		// Next bar starts where this one ended
+		// The next bar starts where this one ended
 		b0 = b1 + 1
 	}
 

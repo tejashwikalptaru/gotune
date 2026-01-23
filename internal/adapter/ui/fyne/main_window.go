@@ -69,7 +69,7 @@ type MainWindow struct {
 	presenter *Presenter
 
 	// Lifecycle callback
-	onBeforeClose func() // Called before window closes
+	onBeforeClose func() // Called before the window closes
 }
 
 // NewMainWindow creates a new main window.
@@ -103,7 +103,7 @@ func NewMainWindow(app fyneapp.App) *MainWindow {
 	w.rotator = rotate.NewRotator(APPNAME, 15)
 	w.stopScroll = make(chan struct{})
 
-	// Set close intercept to ensure state is saved before window closes
+	// Set close intercept to ensure the state is saved before the window closes
 	w.window.SetCloseIntercept(func() {
 		if w.onBeforeClose != nil {
 			w.onBeforeClose()
@@ -123,7 +123,7 @@ func (w *MainWindow) SetPresenter(presenter *Presenter) {
 }
 
 // SetOnBeforeClose sets a callback that will be invoked before the window closes.
-// This allows saving application state before the window is destroyed.
+// This allows saving the application state before the window is destroyed.
 func (w *MainWindow) SetOnBeforeClose(callback func()) {
 	w.onBeforeClose = callback
 }
@@ -141,7 +141,7 @@ func (w *MainWindow) buildUI() {
 	// Stack album art and visualizer (only one visible at a time)
 	w.albumArtStack = container.NewStack(w.albumArt, w.visualizer)
 
-	// Wrap in tappable stack for right-click context menu
+	// Wrap in the tappable stack for a right-click context menu
 	w.tappableStack = customwidgets.NewTappableStack(w.albumArtStack, func(pe *fyneapp.PointEvent) {
 		w.showDisplayModeMenu(pe.AbsolutePosition)
 	})
@@ -570,7 +570,7 @@ func (w *MainWindow) showDisplayModeMenu(pos fyneapp.Position) {
 	isVisualizerMode := w.visualizerEnabled
 	w.visualizerMu.Unlock()
 
-	// Create menu items with checkmarks for current selection
+	// Create menu items with checkmarks for the current selection
 	albumArtLabel := "Album Art"
 	visualizerLabel := "Visualizer"
 	if !isVisualizerMode {

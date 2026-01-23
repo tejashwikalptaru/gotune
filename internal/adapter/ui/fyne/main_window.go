@@ -59,6 +59,9 @@ type MainWindow struct {
 
 	// Presenter (set after construction)
 	presenter *Presenter
+
+	// Lifecycle callback
+	onBeforeClose func() // Called before window closes
 }
 
 // NewMainWindow creates a new main window.
@@ -92,6 +95,14 @@ func NewMainWindow(app fyneapp.App) *MainWindow {
 	w.rotator = rotate.NewRotator(APPNAME, 15)
 	w.stopScroll = make(chan struct{})
 
+	// Set close intercept to ensure state is saved before window closes
+	w.window.SetCloseIntercept(func() {
+		if w.onBeforeClose != nil {
+			w.onBeforeClose()
+		}
+		w.window.Close()
+	})
+
 	return w
 }
 
@@ -101,6 +112,12 @@ func (w *MainWindow) SetPresenter(presenter *Presenter) {
 	w.presenter = presenter
 	w.wirePresenterHandlers()
 	w.addShortcuts()
+}
+
+// SetOnBeforeClose sets a callback that will be invoked before the window closes.
+// This allows saving application state before the window is destroyed.
+func (w *MainWindow) SetOnBeforeClose(callback func()) {
+	w.onBeforeClose = callback
 }
 
 // buildUI constructs the UI components.

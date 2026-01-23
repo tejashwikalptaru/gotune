@@ -189,6 +189,14 @@ func NewApplication(config Config) (*Application, error) {
 	// Connect presenter to the main window
 	app.mainWindow.SetPresenter(app.presenter)
 
+	// Set callback to save state before window closes
+	// This ensures state is persisted even when quitting via Cmd+Q or window close button
+	app.mainWindow.SetOnBeforeClose(func() {
+		if err := app.saveState(); err != nil {
+			app.logger.Warn("failed to save state on close", slog.Any("error", err))
+		}
+	})
+
 	return app, nil
 }
 

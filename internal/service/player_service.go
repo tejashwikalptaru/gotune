@@ -546,6 +546,24 @@ func (s *PlaybackService) handleTrackFinishedWithLock() {
 	// Lock is ALWAYS released before this point
 }
 
+// GetFFTData returns FFT data for the current playing track.
+// Returns nil if no track is playing or FFT data is unavailable.
+func (s *PlaybackService) GetFFTData() []float32 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.currentHandle == domain.InvalidTrackHandle {
+		return nil
+	}
+
+	data, err := s.engine.GetFFTData(s.currentHandle)
+	if err != nil {
+		return nil
+	}
+
+	return data
+}
+
 // Verify that PlaybackService implements the expected interface patterns
 var _ interface {
 	LoadTrack(domain.MusicTrack, int) error
@@ -560,5 +578,6 @@ var _ interface {
 	IsLooping() bool
 	Seek(time.Duration) error
 	GetState() domain.PlaybackState
+	GetFFTData() []float32
 	Shutdown() error
 } = (*PlaybackService)(nil)

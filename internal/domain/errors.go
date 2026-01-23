@@ -62,6 +62,12 @@ var (
 
 	// ErrPlaybackFailed is returned when playback cannot be started.
 	ErrPlaybackFailed = errors.New("playback failed")
+
+	// ErrInvalidFFTSize is returned when an invalid FFT size is provided.
+	ErrInvalidFFTSize = errors.New("invalid FFT size")
+
+	// ErrFFTDataUnavailable is returned when FFT data cannot be retrieved from the audio channel.
+	ErrFFTDataUnavailable = errors.New("FFT data unavailable")
 )
 
 // AudioEngineError represents an error from the audio engine.

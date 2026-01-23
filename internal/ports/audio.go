@@ -116,6 +116,15 @@ type AudioEngine interface {
 	//
 	// Returns a MusicTrack with populated metadata, or an error if extraction fails.
 	GetMetadata(filePath string) (*domain.MusicTrack, error)
+
+	// Visualization methods
+
+	// GetFFTData retrieves FFT frequency data for visualization.
+	// Uses FFT2048 for good resolution, returns 1024 float values representing
+	// frequency magnitudes from low to high frequencies.
+	//
+	// Returns the FFT data or an error if the data cannot be retrieved.
+	GetFFTData(handle domain.TrackHandle) ([]float32, error)
 }
 
 // AudioEngineFactory is a function that creates an AudioEngine instance.

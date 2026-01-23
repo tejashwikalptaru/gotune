@@ -95,6 +95,16 @@ const (
 	ChannelAttribSLIDELOG       ChannelAttributes = C.BASS_SLIDE_LOG             // BASS_ChannelSlideAttribute flags
 )
 
+// BASS_ChannelGetData flags
+const (
+	dataFFT256  = C.BASS_DATA_FFT256
+	dataFFT512  = C.BASS_DATA_FFT512
+	dataFFT1024 = C.BASS_DATA_FFT1024
+	dataFFT2048 = C.BASS_DATA_FFT2048
+	dataFFT4096 = C.BASS_DATA_FFT4096
+	dataFFT8192 = C.BASS_DATA_FFT8192
+)
+
 // ErrorCode represents BASS library error codes.
 type ErrorCode int
 

@@ -15,6 +15,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/tejashwikalptaru/gotune/internal/adapter/ui/fyne/rotate"
+	customwidgets "github.com/tejashwikalptaru/gotune/internal/adapter/ui/fyne/widgets"
 	"github.com/tejashwikalptaru/gotune/res"
 )
 
@@ -49,6 +50,13 @@ type MainWindow struct {
 	stopScroll       chan struct{}
 	updatingProgress bool
 	progressMu       sync.Mutex
+
+	// Visualizer components
+	visualizer        *customwidgets.Visualizer
+	albumArtStack     *fyneapp.Container
+	tappableStack     *customwidgets.TappableStack
+	visualizerEnabled bool
+	visualizerMu      sync.Mutex
 
 	// Playlist window (optional)
 	playlistWindow *PlaylistWindow
@@ -126,6 +134,18 @@ func (w *MainWindow) buildUI() {
 	w.albumArt = canvas.NewImageFromResource(res.ResourceMusicPng)
 	w.albumArt.FillMode = canvas.ImageFillContain
 
+	// Visualizer (hidden by default, 48 bars for good visual balance)
+	w.visualizer = customwidgets.NewVisualizer(48)
+	w.visualizer.Hide()
+
+	// Stack album art and visualizer (only one visible at a time)
+	w.albumArtStack = container.NewStack(w.albumArt, w.visualizer)
+
+	// Wrap in tappable stack for right-click context menu
+	w.tappableStack = customwidgets.NewTappableStack(w.albumArtStack, func(pe *fyneapp.PointEvent) {
+		w.showDisplayModeMenu(pe.AbsolutePosition)
+	})
+
 	// Control buttons
 	w.prevButton = widget.NewButtonWithIcon("", theme.MediaSkipPreviousIcon(), nil)
 	w.playButton = widget.NewButtonWithIcon("", theme.MediaPlayIcon(), nil)
@@ -163,7 +183,7 @@ func (w *MainWindow) buildUI() {
 
 	// Main layout
 	controls := container.NewVBox(buttonsHolder, sliderHolder)
-	splitContainer := container.NewBorder(nil, controls, nil, nil, w.albumArt)
+	splitContainer := container.NewBorder(nil, controls, nil, nil, w.tappableStack)
 	w.window.SetContent(container.NewPadded(splitContainer))
 
 	// Menu
@@ -542,6 +562,80 @@ func (w *MainWindow) ShowNotification(title, message string) {
 	fyneapp.Do(func() {
 		w.app.SendNotification(fyneapp.NewNotification(title, message))
 	})
+}
+
+// showDisplayModeMenu shows a context menu for switching between album art and visualizer.
+func (w *MainWindow) showDisplayModeMenu(pos fyneapp.Position) {
+	w.visualizerMu.Lock()
+	isVisualizerMode := w.visualizerEnabled
+	w.visualizerMu.Unlock()
+
+	// Create menu items with checkmarks for current selection
+	albumArtLabel := "Album Art"
+	visualizerLabel := "Visualizer"
+	if !isVisualizerMode {
+		albumArtLabel = "\u2713 " + albumArtLabel // Checkmark
+	} else {
+		visualizerLabel = "\u2713 " + visualizerLabel // Checkmark
+	}
+
+	menu := fyneapp.NewMenu("",
+		fyneapp.NewMenuItem(albumArtLabel, func() {
+			w.SetVisualizerEnabled(false)
+			if w.presenter != nil {
+				w.presenter.OnVisualizerModeChanged(false)
+			}
+		}),
+		fyneapp.NewMenuItem(visualizerLabel, func() {
+			w.SetVisualizerEnabled(true)
+			if w.presenter != nil {
+				w.presenter.OnVisualizerModeChanged(true)
+			}
+		}),
+	)
+
+	popup := widget.NewPopUpMenu(menu, w.window.Canvas())
+	popup.ShowAtPosition(pos)
+}
+
+// UpdateVisualizer updates the visualizer with new FFT data.
+func (w *MainWindow) UpdateVisualizer(data []float32) {
+	fyneapp.Do(func() {
+		w.visualizerMu.Lock()
+		enabled := w.visualizerEnabled
+		w.visualizerMu.Unlock()
+
+		if enabled && w.visualizer != nil {
+			w.visualizer.UpdateFFT(data)
+		}
+	})
+}
+
+// SetVisualizerEnabled switches between album art and visualizer display modes.
+func (w *MainWindow) SetVisualizerEnabled(enabled bool) {
+	fyneapp.Do(func() {
+		w.visualizerMu.Lock()
+		w.visualizerEnabled = enabled
+		w.visualizerMu.Unlock()
+
+		if enabled {
+			w.albumArt.Hide()
+			w.visualizer.Show()
+		} else {
+			w.visualizer.Hide()
+			w.visualizer.Reset()
+			w.albumArt.Show()
+		}
+
+		w.albumArtStack.Refresh()
+	})
+}
+
+// IsVisualizerEnabled returns whether the visualizer is currently enabled.
+func (w *MainWindow) IsVisualizerEnabled() bool {
+	w.visualizerMu.Lock()
+	defer w.visualizerMu.Unlock()
+	return w.visualizerEnabled
 }
 
 // Verify UIView implementation

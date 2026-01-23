@@ -32,6 +32,18 @@ type Visualizer struct {
 	paddingTop   float32
 	paddingLeft  float32
 	paddingRight float32
+
+	// Layout cache (recalculated only when size changes)
+	lastWidth        int
+	lastHeight       int
+	cachedBarWidth   int
+	cachedActualGap  int
+	cachedStartX     int
+	cachedEffectiveW int
+	cachedEffectiveH int
+	cachedPaddingL   int
+	cachedPaddingR   int
+	cachedPaddingT   int
 }
 
 // NewVisualizer creates a new visualizer widget with the specified number of bars.
@@ -78,13 +90,7 @@ func (v *Visualizer) UpdateFFT(data []float32) {
 // draw is the raster generator function that renders the visualizer.
 func (v *Visualizer) draw(w, h int) image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
-
-	// Fill the background with black
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
-			img.Set(x, y, color.Black)
-		}
-	}
+	v.fillBackground(img, w, h)
 
 	v.mu.Lock()
 	fftData := v.fftData
@@ -95,91 +101,26 @@ func (v *Visualizer) draw(w, h int) image.Image {
 		return img
 	}
 
-	// Apply padding to get an effective drawing area
-	paddingLeft := int(v.paddingLeft)
-	paddingRight := int(v.paddingRight)
-	paddingTop := int(v.paddingTop)
+	// Recalculate layout only if size changed
+	if v.lastWidth != w || v.lastHeight != h {
+		v.recalculateLayout(w, h)
+	}
 
-	effectiveWidth := w - paddingLeft - paddingRight
-	effectiveHeight := h - paddingTop
-
-	if effectiveWidth <= 0 || effectiveHeight <= 0 {
+	// Early return if effective area is invalid
+	if v.cachedBarWidth == 0 {
 		return img
 	}
 
-	// Calculate bar dimensions dynamically based on available space
-	numBars := v.numBars
-	totalGapWidth := (numBars - 1) * v.minGap
-	availableBarWidth := effectiveWidth - totalGapWidth
-
-	barWidth := availableBarWidth / numBars
-	if barWidth < 1 {
-		barWidth = 1
-	}
-
-	// Recalculate gap to distribute remaining space evenly
-	actualGap := v.minGap
-	if numBars > 1 {
-		remainingSpace := effectiveWidth - (barWidth * numBars)
-		actualGap = remainingSpace / (numBars - 1)
-		if actualGap < v.minGap {
-			actualGap = v.minGap
-		}
-	}
-
 	// Calculate bar heights using logarithmic frequency distribution
-	barHeights := v.calculateBarHeights(fftData, effectiveHeight)
-
-	// Calculate starting X position (with left padding)
-	totalBarWidth := barWidth + actualGap
-	usedWidth := numBars*barWidth + (numBars-1)*actualGap
-	startX := paddingLeft + (effectiveWidth-usedWidth)/2 // Center bars within an effective area
+	barHeights := v.calculateBarHeights(fftData, v.cachedEffectiveH)
 
 	// Update cap heights with falling animation
 	v.mu.Lock()
-	for i := 0; i < v.numBars && i < len(barHeights); i++ {
-		barH := barHeights[i]
-		if barH > caps[i] {
-			caps[i] = barH // Cap jumps to bar height
-		} else {
-			caps[i] -= v.capFalloff // Cap falls slowly
-			if caps[i] < 0 {
-				caps[i] = 0
-			}
-		}
-	}
+	v.updateCapHeights(barHeights, caps)
 	v.mu.Unlock()
 
-	// Draw bars
-	for i := 0; i < v.numBars && i < len(barHeights); i++ {
-		barH := int(barHeights[i])
-		barX := startX + i*totalBarWidth
-
-		// Draw the bar with a gradient
-		for y := 0; y < barH && y < effectiveHeight; y++ {
-			screenY := h - 1 - y
-			col := v.getGradientColor(float64(y) / float64(effectiveHeight))
-
-			for x := barX; x < barX+barWidth && x < w-paddingRight; x++ {
-				if x >= paddingLeft {
-					img.Set(x, screenY, col)
-				}
-			}
-		}
-
-		// Draw falling cap (white)
-		capY := int(caps[i])
-		if capY > 0 && capY < effectiveHeight {
-			screenY := h - 1 - capY
-			for cy := 0; cy < v.capHeight && screenY+cy < h && screenY+cy >= paddingTop; cy++ {
-				for x := barX; x < barX+barWidth && x < w-paddingRight; x++ {
-					if x >= paddingLeft {
-						img.Set(x, screenY+cy, color.White)
-					}
-				}
-			}
-		}
-	}
+	// Draw all bars and caps
+	v.drawBars(img, barHeights, caps, h)
 
 	return img
 }
@@ -278,4 +219,112 @@ func (v *Visualizer) Reset() {
 	v.mu.Unlock()
 
 	v.raster.Refresh()
+}
+
+// recalculateLayout computes and caches size-dependent layout values.
+// This should only be called when widget dimensions change.
+func (v *Visualizer) recalculateLayout(w, h int) {
+	v.lastWidth = w
+	v.lastHeight = h
+
+	v.cachedPaddingL = int(v.paddingLeft)
+	v.cachedPaddingR = int(v.paddingRight)
+	v.cachedPaddingT = int(v.paddingTop)
+
+	v.cachedEffectiveW = w - v.cachedPaddingL - v.cachedPaddingR
+	v.cachedEffectiveH = h - v.cachedPaddingT
+
+	if v.cachedEffectiveW <= 0 || v.cachedEffectiveH <= 0 {
+		v.cachedBarWidth = 0
+		return
+	}
+
+	// Calculate bar dimensions dynamically based on available space
+	totalGapWidth := (v.numBars - 1) * v.minGap
+	availableBarWidth := v.cachedEffectiveW - totalGapWidth
+
+	v.cachedBarWidth = max(availableBarWidth/v.numBars, 1)
+
+	// Recalculate gap to distribute remaining space evenly
+	v.cachedActualGap = v.minGap
+	if v.numBars > 1 {
+		remainingSpace := v.cachedEffectiveW - (v.cachedBarWidth * v.numBars)
+		v.cachedActualGap = max(remainingSpace/(v.numBars-1), v.minGap)
+	}
+
+	// Calculate starting X position (with left padding)
+	usedWidth := v.numBars*v.cachedBarWidth + (v.numBars-1)*v.cachedActualGap
+	v.cachedStartX = v.cachedPaddingL + (v.cachedEffectiveW-usedWidth)/2
+}
+
+// fillBackground fills the image with black color.
+func (v *Visualizer) fillBackground(img *image.RGBA, w, h int) {
+	for y := range h {
+		for x := range w {
+			img.Set(x, y, color.Black)
+		}
+	}
+}
+
+// updateCapHeights updates cap positions with falling animation.
+// Must be called with v.mu locked.
+func (v *Visualizer) updateCapHeights(barHeights []float32, caps []float32) {
+	for i := 0; i < v.numBars && i < len(barHeights); i++ {
+		barH := barHeights[i]
+		if barH > caps[i] {
+			caps[i] = barH // Cap jumps to bar height
+		} else {
+			caps[i] -= v.capFalloff // Cap falls slowly
+			if caps[i] < 0 {
+				caps[i] = 0
+			}
+		}
+	}
+}
+
+// drawBars renders all bars and their caps to the image.
+func (v *Visualizer) drawBars(img *image.RGBA, barHeights []float32, caps []float32, h int) {
+	totalBarWidth := v.cachedBarWidth + v.cachedActualGap
+
+	for i := 0; i < v.numBars && i < len(barHeights); i++ {
+		barH := int(barHeights[i])
+		barX := v.cachedStartX + i*totalBarWidth
+
+		v.drawSingleBar(img, barX, barH, h)
+		v.drawCap(img, barX, int(caps[i]), h)
+	}
+}
+
+// drawSingleBar renders one bar with gradient coloring.
+func (v *Visualizer) drawSingleBar(img *image.RGBA, barX, barH, h int) {
+	maxX := img.Bounds().Max.X - v.cachedPaddingR
+
+	for y := 0; y < barH && y < v.cachedEffectiveH; y++ {
+		screenY := h - 1 - y
+		col := v.getGradientColor(float64(y) / float64(v.cachedEffectiveH))
+
+		for x := barX; x < barX+v.cachedBarWidth && x < maxX; x++ {
+			if x >= v.cachedPaddingL {
+				img.Set(x, screenY, col)
+			}
+		}
+	}
+}
+
+// drawCap renders the falling cap for a bar.
+func (v *Visualizer) drawCap(img *image.RGBA, barX, capY, h int) {
+	if capY <= 0 || capY >= v.cachedEffectiveH {
+		return
+	}
+
+	maxX := img.Bounds().Max.X - v.cachedPaddingR
+	screenY := h - 1 - capY
+
+	for cy := 0; cy < v.capHeight && screenY+cy < h && screenY+cy >= v.cachedPaddingT; cy++ {
+		for x := barX; x < barX+v.cachedBarWidth && x < maxX; x++ {
+			if x >= v.cachedPaddingL {
+				img.Set(x, screenY+cy, color.White)
+			}
+		}
+	}
 }

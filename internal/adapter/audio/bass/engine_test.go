@@ -714,14 +714,14 @@ func TestBassEngine_ConcurrentPlayback(t *testing.T) {
 		}
 	}()
 
-	err := engine.Initialize(-1, 44100, 0)
-	require.NoError(t, err)
+	initEngineOrSkip(t, engine)
 
 	// Load multiple tracks
 	const numTracks = 5
 	handles := make([]domain.TrackHandle, numTracks)
 	for i := 0; i < numTracks; i++ {
-		handles[i], err = engine.Load(testFile)
+		handle, err := engine.Load(testFile)
+		handles[i] = handle
 		require.NoError(t, err)
 	}
 

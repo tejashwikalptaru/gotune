@@ -69,6 +69,9 @@ type Config struct {
 
 	// LogLevel controls logging verbosity
 	LogLevel slog.Level
+
+	// TestFyneApp allows injecting a test Fyne app for testing (nil for production)
+	TestFyneApp fyne.App
 }
 
 // DefaultConfig returns the default application configuration.
@@ -90,7 +93,11 @@ func NewApplication(config Config) (*Application, error) {
 	app := &Application{}
 
 	// Step 1: Create Fyne application
-	app.fyneApp = fyneapp.NewWithID(config.AppID)
+	if config.TestFyneApp != nil {
+		app.fyneApp = config.TestFyneApp
+	} else {
+		app.fyneApp = fyneapp.NewWithID(config.AppID)
+	}
 
 	// Step 1.5: Create logger
 	loggerCfg := logger.Config{

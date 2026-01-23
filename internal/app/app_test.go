@@ -3,6 +3,7 @@ package app
 import (
 	"testing"
 
+	"fyne.io/fyne/v2/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -11,13 +12,20 @@ import (
 func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m,
 		// Ignore Fyne framework goroutines that run in the background
-		goleak.IgnoreAnyFunction("fyne.io/fyne/v2"),
+		goleak.IgnoreTopFunction("fyne.io/fyne/v2/internal/async.(*UnboundedChan[...]).processing"),
 	)
 }
 
-func TestNewApplication(t *testing.T) {
+// testConfig returns a Config suitable for testing with mock audio and test Fyne app.
+func testConfig() Config {
 	config := DefaultConfig()
-	config.UseMockAudio = true // Use mock for testing
+	config.UseMockAudio = true
+	config.TestFyneApp = test.NewApp()
+	return config
+}
+
+func TestNewApplication(t *testing.T) {
+	config := testConfig()
 
 	app, err := NewApplication(config)
 	require.NoError(t, err)
@@ -31,15 +39,14 @@ func TestDefaultConfig(t *testing.T) {
 	config := DefaultConfig()
 
 	assert.Equal(t, "com.gotune.app", config.AppID)
-	assert.Equal(t, "GoTune", config.AppName)
+	assert.Equal(t, "Go Tune", config.AppName)
 	assert.Equal(t, -1, config.AudioDevice)
 	assert.Equal(t, 44100, config.SampleRate)
 	assert.False(t, config.UseMockAudio)
 }
 
 func TestApplicationLifecycle(t *testing.T) {
-	config := DefaultConfig()
-	config.UseMockAudio = true
+	config := testConfig()
 
 	// Create
 	app, err := NewApplication(config)
@@ -55,8 +62,7 @@ func TestApplicationLifecycle(t *testing.T) {
 }
 
 func TestApplicationLoadSavedState(t *testing.T) {
-	config := DefaultConfig()
-	config.UseMockAudio = true
+	config := testConfig()
 
 	app, err := NewApplication(config)
 	require.NoError(t, err)
@@ -67,8 +73,7 @@ func TestApplicationLoadSavedState(t *testing.T) {
 }
 
 func TestApplicationWithServices(t *testing.T) {
-	config := DefaultConfig()
-	config.UseMockAudio = true
+	config := testConfig()
 
 	app, err := NewApplication(config)
 	require.NoError(t, err)

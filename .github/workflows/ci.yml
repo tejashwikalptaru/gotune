@@ -107,6 +107,7 @@ jobs:
           go test ./internal/... -v -count=1 -timeout 5m
 
 
+
   build:
     name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
     runs-on: ${{ matrix.os }}
@@ -245,12 +246,11 @@ jobs:
           GIT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
           BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
-          LDFLAGS="-X '${{ env.MODULE }}/internal/app.Version=${VERSION}' \
+          GOFLAGS="-ldflags=\"\
+            -X '${{ env.MODULE }}/internal/app.Version=${VERSION}' \
             -X '${{ env.MODULE }}/internal/app.GitCommit=${GIT_COMMIT}' \
             -X '${{ env.MODULE }}/internal/app.GitTag=${GIT_TAG}' \
-            -X '${{ env.MODULE }}/internal/app.BuildTime=${BUILD_TIME}'"
-
-          fyne package -os darwin -ldflags "${LDFLAGS}"
+            -X '${{ env.MODULE }}/internal/app.BuildTime=${BUILD_TIME}'\"" fyne package -os darwin
           install_name_tool -add_rpath @executable_path "Go Tune.app/Contents/MacOS/gotune"
           cp ${{ matrix.lib_path }}/${{ matrix.lib_file }} "Go Tune.app/Contents/MacOS/"
           zip -r "${{ matrix.artifact_name }}" "Go Tune.app"
@@ -265,12 +265,11 @@ jobs:
           GIT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
           BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
-          LDFLAGS="-X '${{ env.MODULE }}/internal/app.Version=${VERSION}' \
+          GOFLAGS="-ldflags=\"\
+            -X '${{ env.MODULE }}/internal/app.Version=${VERSION}' \
             -X '${{ env.MODULE }}/internal/app.GitCommit=${GIT_COMMIT}' \
             -X '${{ env.MODULE }}/internal/app.GitTag=${GIT_TAG}' \
-            -X '${{ env.MODULE }}/internal/app.BuildTime=${BUILD_TIME}'"
-
-          fyne package -os linux -ldflags "${LDFLAGS}"
+            -X '${{ env.MODULE }}/internal/app.BuildTime=${BUILD_TIME}'\"" fyne package -os linux
           mkdir -p package-tmp
           tar -xf "Go Tune.tar.xz" -C package-tmp
           cp ${{ matrix.lib_path }}/${{ matrix.lib_file }} package-tmp/usr/local/bin/
@@ -290,12 +289,13 @@ jobs:
           if (-not $GIT_TAG) { $GIT_TAG = "" }
           $BUILD_TIME = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ" -AsUTC)
 
-          $LDFLAGS = "-X '${{ env.MODULE }}/internal/app.Version=$VERSION' " +
-                     "-X '${{ env.MODULE }}/internal/app.GitCommit=$GIT_COMMIT' " +
-                     "-X '${{ env.MODULE }}/internal/app.GitTag=$GIT_TAG' " +
-                     "-X '${{ env.MODULE }}/internal/app.BuildTime=$BUILD_TIME'"
+          $GOFLAGS = "-ldflags=`"-X '${{ env.MODULE }}/internal/app.Version=$VERSION' `
+            -X '${{ env.MODULE }}/internal/app.GitCommit=$GIT_COMMIT' `
+            -X '${{ env.MODULE }}/internal/app.GitTag=$GIT_TAG' `
+            -X '${{ env.MODULE }}/internal/app.BuildTime=$BUILD_TIME'`""
 
-          fyne package -os windows -ldflags $LDFLAGS
+          $Env:GOFLAGS = $GOFLAGS
+          fyne package -os windows
           New-Item -ItemType Directory -Force -Path package-tmp
           Copy-Item "Go Tune.exe" package-tmp/
           Copy-Item "${{ matrix.lib_path }}/${{ matrix.lib_file }}" package-tmp/

@@ -37,7 +37,7 @@ make build
 ./build/gotune
 
 # Or use go run (slower, rebuilds each time)
-go run ./cmd
+go run ./
 ```
 
 ### Running with Different Log Levels

@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"log/slog"
 	"testing"
 	"time"
 
@@ -15,7 +16,7 @@ func newTestPlaylistRepository() *PlaylistRepository {
 	app := test.NewApp()
 	prefs := app.Preferences()
 
-	return NewPlaylistRepository(prefs)
+	return NewPlaylistRepository(prefs, slog.Default())
 }
 
 func TestPlaylistRepository_SaveAndLoad(t *testing.T) {

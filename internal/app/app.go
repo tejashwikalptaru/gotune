@@ -136,7 +136,7 @@ func NewApplication(config Config) (*Application, error) {
 	// Step 4: Create repositories
 	prefs := app.fyneApp.Preferences()
 	app.historyRepo = memory.NewHistoryRepository(prefs)
-	app.playlistRepo = memory.NewPlaylistRepository(prefs)
+	app.playlistRepo = memory.NewPlaylistRepository(prefs, app.logger.With(slog.String("repo", "playlist")))
 	app.preferencesRepo = memory.NewPreferencesRepository(prefs)
 
 	// Step 5: Create services (with dependency injection)

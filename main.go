@@ -23,6 +23,10 @@ import (
 )
 
 func main() {
+	// Log version at startup
+	versionInfo := app.GetVersionInfo()
+	slog.Info(versionInfo.FullString())
+
 	// Create default configuration
 	config := app.DefaultConfig()
 

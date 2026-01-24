@@ -2,6 +2,7 @@ package memory
 
 import (
 	"encoding/json"
+	"log/slog"
 	"sync"
 
 	"fyne.io/fyne/v2"
@@ -14,15 +15,17 @@ import (
 //
 // Thread-safe: All operations protected by sync.RWMutex.
 type PlaylistRepository struct {
-	prefs fyne.Preferences
-	mu    sync.RWMutex
+	prefs  fyne.Preferences
+	mu     sync.RWMutex
+	logger *slog.Logger
 }
 
 // NewPlaylistRepository creates a new playlist repository.
 // The preferences parameter should be obtained from fyne.CurrentApp().Preferences().
-func NewPlaylistRepository(prefs fyne.Preferences) *PlaylistRepository {
+func NewPlaylistRepository(prefs fyne.Preferences, logger *slog.Logger) *PlaylistRepository {
 	return &PlaylistRepository{
-		prefs: prefs,
+		prefs:  prefs,
+		logger: logger,
 	}
 }
 
@@ -95,13 +98,14 @@ func (r *PlaylistRepository) LoadAll() ([]*domain.Playlist, error) {
 		key := "playlist." + id
 		data := r.prefs.String(key)
 		if data == "" {
+			r.logger.Warn("playlist data missing", slog.String("id", id))
 			continue // Skip missing playlists
 		}
 
 		var playlist domain.Playlist
 		if err := json.Unmarshal([]byte(data), &playlist); err != nil {
-			// Skip corrupted playlists
-			continue
+			r.logger.Warn("playlist corrupted", slog.String("id", id), slog.Any("error", err))
+			continue // Skip corrupted playlists
 		}
 
 		playlists = append(playlists, &playlist)

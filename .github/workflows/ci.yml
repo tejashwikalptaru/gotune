@@ -11,6 +11,7 @@ concurrency:
 
 env:
   GO_VERSION: '1.25'
+  MODULE: github.com/tejashwikalptaru/gotune
 
 jobs:
   lint:
@@ -156,7 +157,18 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 1
-        run: go build -o build/${{ matrix.binary }} ./
+        run: |
+          VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+          GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+          GIT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
+          BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+          go build -ldflags "\
+            -X '${{ env.MODULE }}/internal/app.Version=${VERSION}' \
+            -X '${{ env.MODULE }}/internal/app.GitCommit=${GIT_COMMIT}' \
+            -X '${{ env.MODULE }}/internal/app.GitTag=${GIT_TAG}' \
+            -X '${{ env.MODULE }}/internal/app.BuildTime=${BUILD_TIME}'" \
+            -o build/${{ matrix.binary }} ./
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -227,7 +239,17 @@ jobs:
           DYLD_LIBRARY_PATH: ${{ github.workspace }}/${{ matrix.lib_path }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          fyne package -os darwin
+          VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+          GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+          GIT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
+          BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+          LDFLAGS="-X '${{ env.MODULE }}/internal/app.Version=${VERSION}' \
+            -X '${{ env.MODULE }}/internal/app.GitCommit=${GIT_COMMIT}' \
+            -X '${{ env.MODULE }}/internal/app.GitTag=${GIT_TAG}' \
+            -X '${{ env.MODULE }}/internal/app.BuildTime=${BUILD_TIME}'"
+
+          fyne package -os darwin -ldflags "${LDFLAGS}"
           install_name_tool -add_rpath @executable_path "Go Tune.app/Contents/MacOS/gotune"
           cp ${{ matrix.lib_path }}/${{ matrix.lib_file }} "Go Tune.app/Contents/MacOS/"
           zip -r "${{ matrix.artifact_name }}" "Go Tune.app"
@@ -237,7 +259,17 @@ jobs:
         env:
           LD_LIBRARY_PATH: ${{ github.workspace }}/${{ matrix.lib_path }}
         run: |
-          fyne package -os linux
+          VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+          GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+          GIT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
+          BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+          LDFLAGS="-X '${{ env.MODULE }}/internal/app.Version=${VERSION}' \
+            -X '${{ env.MODULE }}/internal/app.GitCommit=${GIT_COMMIT}' \
+            -X '${{ env.MODULE }}/internal/app.GitTag=${GIT_TAG}' \
+            -X '${{ env.MODULE }}/internal/app.BuildTime=${BUILD_TIME}'"
+
+          fyne package -os linux -ldflags "${LDFLAGS}"
           mkdir -p package-tmp
           tar -xf "Go Tune.tar.xz" -C package-tmp
           cp ${{ matrix.lib_path }}/${{ matrix.lib_file }} package-tmp/usr/local/bin/
@@ -248,7 +280,21 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH = "${{ github.workspace }}\${{ matrix.lib_path }};$env:PATH"
-          fyne package -os windows
+
+          $VERSION = (git describe --tags --always --dirty 2>$null) -replace "`n|`r"
+          if (-not $VERSION) { $VERSION = "dev" }
+          $GIT_COMMIT = (git rev-parse --short HEAD 2>$null) -replace "`n|`r"
+          if (-not $GIT_COMMIT) { $GIT_COMMIT = "unknown" }
+          $GIT_TAG = (git describe --tags --exact-match 2>$null) -replace "`n|`r"
+          if (-not $GIT_TAG) { $GIT_TAG = "" }
+          $BUILD_TIME = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ" -AsUTC)
+
+          $LDFLAGS = "-X '${{ env.MODULE }}/internal/app.Version=$VERSION' " +
+                     "-X '${{ env.MODULE }}/internal/app.GitCommit=$GIT_COMMIT' " +
+                     "-X '${{ env.MODULE }}/internal/app.GitTag=$GIT_TAG' " +
+                     "-X '${{ env.MODULE }}/internal/app.BuildTime=$BUILD_TIME'"
+
+          fyne package -os windows -ldflags $LDFLAGS
           New-Item -ItemType Directory -Force -Path package-tmp
           Copy-Item "Go Tune.exe" package-tmp/
           Copy-Item "${{ matrix.lib_path }}/${{ matrix.lib_file }}" package-tmp/

@@ -63,7 +63,7 @@ Build for your current platform:
 make build
 
 # Or directly with go build
-go build -o build/gotune ./cmd
+go build -o build/gotune ./
 ```
 
 The binary will be created at `build/gotune` (or `build/gotune.exe` on Windows).

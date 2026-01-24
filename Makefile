@@ -1,5 +1,18 @@
 .PHONY: build build-demo build-all test test-race create-package prepare-lib bundle-lib fix-rpath clean package execute run
 
+# Version information
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+GIT_TAG := $(shell git describe --tags --exact-match 2>/dev/null || echo "")
+BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
+MODULE := github.com/tejashwikalptaru/gotune
+
+LDFLAGS := -ldflags "\
+	-X '$(MODULE)/internal/app.Version=$(VERSION)' \
+	-X '$(MODULE)/internal/app.GitCommit=$(GIT_COMMIT)' \
+	-X '$(MODULE)/internal/app.GitTag=$(GIT_TAG)' \
+	-X '$(MODULE)/internal/app.BuildTime=$(BUILD_TIME)'"
+
 # Detect operating system for library paths
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
@@ -22,7 +35,7 @@ endif
 
 # Production build
 build:
-	go build -o build/gotune ./
+	go build $(LDFLAGS) -o build/gotune ./
 
 # Run tests
 test:

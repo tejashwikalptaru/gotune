@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	"log/slog"
 	"math"
 	"sync"
 	"time"
@@ -278,7 +279,7 @@ func (w *MainWindow) handleOpenFile() {
 		if err := w.presenter.OnFileOpened(filePath); err != nil {
 			w.ShowNotification("Error", fmt.Sprintf("Failed to open file: %v", err))
 		}
-	})
+	}, slog.Default())
 	dialog.Show()
 }
 
@@ -293,7 +294,7 @@ func (w *MainWindow) handleOpenFolder() {
 		if err := w.presenter.OnFolderOpened(folderPath); err != nil {
 			w.ShowNotification("Error", fmt.Sprintf("Failed to scan folder: %v", err))
 		}
-	})
+	}, slog.Default())
 	dialog.Show()
 }
 

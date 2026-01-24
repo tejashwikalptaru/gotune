@@ -1,4 +1,4 @@
-.PHONY: build build-demo build-all test test-race create-package prepare-lib bundle-lib fix-rpath clean package execute run
+.PHONY: generate-credits build build-demo build-all test test-race create-package prepare-lib bundle-lib fix-rpath clean package execute run
 
 # Version information
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -33,6 +33,13 @@ else
     LIB_FILE := bass.dll
 endif
 
+# Generate credit
+generate-credits:
+	@which fyne-credits-generator > /dev/null || (echo "Installing fyne-credits-generator..." && go install github.com/lusingander/fyne-credits-generator/cmd/fyne-credits-generator@latest)
+	@echo "Generating credits..."
+	fyne-credits-generator > internal/adapter/ui/credits.go
+	@echo "Done"
+
 # Production build
 build:
 	go build $(LDFLAGS) -o build/gotune ./
@@ -50,8 +57,9 @@ execute:
 	./build/gotune
 
 # Build and run production
-run: build execute
+run: generate-credits build execute
 
+# Package
 install-fyne:
 	go install fyne.io/fyne/v2/cmd/fyne@latest
 
@@ -80,7 +88,7 @@ ifeq ($(UNAME_S),Darwin)
 endif
 
 # Full package flow
-package: create-package fix-rpath bundle-lib
+package: generate-credits create-package fix-rpath bundle-lib
 	@echo "Package created successfully: Go Tune.app"
 
 # -------------------------------------------------------------------------

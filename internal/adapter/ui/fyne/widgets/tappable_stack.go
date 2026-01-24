@@ -34,7 +34,7 @@ func (t *TappableStack) CreateRenderer() fyne.WidgetRenderer {
 // Tapped implements fyne.Tappable (primary tap - left click).
 // We don't do anything on primary tap.
 func (t *TappableStack) Tapped(*fyne.PointEvent) {
-	// No action on primary tap
+	// No action on the primary tap
 }
 
 // TappedSecondary implements fyne.SecondaryTappable (right-click).

@@ -1,17 +1,11 @@
 // Package bass provides tests for the BASS audio engine adapter.
 //
 // NOTE: These tests require the BASS library to be available for the current platform
-// and architecture. On Apple Silicon (arm64), you may need the arm64 version of the
-// BASS library or run tests under Rosetta 2 with GOARCH=amd64.
-//
-// To run tests on Apple Silicon:
-//
-//	GOARCH=amd64 go test -v ./internal/adapter/audio/bass/
-//
-// Or download arm64 BASS library from https://www.un4seen.com/
+// and architecture
 package bass
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -262,7 +256,7 @@ func TestBassEngine_PlayPauseStop(t *testing.T) {
 	handle, err := engine.Load(testFile)
 	require.NoError(t, err)
 	defer func() {
-		if err := engine.Unload(handle); err != nil && err != domain.ErrInvalidTrackHandle {
+		if err := engine.Unload(handle); err != nil && !errors.Is(err, domain.ErrInvalidTrackHandle) {
 			t.Errorf("Error during engine unload: %v", err)
 		}
 	}()
@@ -303,7 +297,7 @@ func TestBassEngine_PlayPauseStop(t *testing.T) {
 	err = engine.Stop(handle)
 	require.NoError(t, err)
 
-	// Status check on stopped/unloaded track should fail
+	// Status check on the stopped /unloaded track should fail
 	_, err = engine.Status(handle)
 	assert.Equal(t, domain.ErrInvalidTrackHandle, err)
 }

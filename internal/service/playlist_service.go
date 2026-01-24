@@ -95,18 +95,18 @@ func (s *PlaylistService) AddTrack(track domain.MusicTrack, playImmediately bool
 		if err := s.playback.Play(); err != nil {
 			return err
 		}
-		// Publish playlist updated event with NEW index
+		// Publish playlist updated event with a NEW index
 		s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
 		return nil
 	} else {
-		// Not playing immediately, publish with unchanged index
+		// Not playing immediately, publish with an unchanged index
 		s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
 		return nil
 	}
 }
 
 // AddTracks adds multiple tracks to the queue, filtering out any duplicates.
-// Tracks with FilePath that already exists in the queue are silently skipped.
+// Tracks with FilePath that already exist in the queue are silently skipped.
 func (s *PlaylistService) AddTracks(tracks []domain.MusicTrack, playFirst bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -146,11 +146,11 @@ func (s *PlaylistService) AddTracks(tracks []domain.MusicTrack, playFirst bool) 
 		if err := s.playback.Play(); err != nil {
 			return err
 		}
-		// Publish playlist updated event with NEW index
+		// Publish playlist updated event with a NEW index
 		s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
 		return nil
 	} else {
-		// Not playing, publish with unchanged index
+		// Not playing, publish with an unchanged index
 		s.bus.Publish(domain.NewPlaylistUpdatedEvent(s.queue, s.currentIndex))
 		return nil
 	}
@@ -239,7 +239,7 @@ func (s *PlaylistService) PlayTrackByPath(filePath string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Find track in queue
+	// Find track in the queue
 	index := -1
 	for i, track := range s.queue {
 		if track.FilePath == filePath {
@@ -385,7 +385,7 @@ func (s *PlaylistService) LoadQueue() error {
 		return err
 	}
 
-	// Load current index
+	// Load the current index
 	index, err := s.history.LoadCurrentIndex()
 	if err != nil {
 		// Default to -1 if not found
@@ -513,7 +513,7 @@ func (s *PlaylistService) Shutdown() error {
 	// Unsubscribe from events
 	s.bus.Unsubscribe(s.autoNextSub)
 
-	// Save queue before shutdown (best effort)
+	// Save queue before shutdown (the best effort)
 	if err := s.history.SaveQueue(s.queue); err != nil {
 		s.logger.Warn("failed to save queue on shutdown", slog.Any("error", err))
 	}

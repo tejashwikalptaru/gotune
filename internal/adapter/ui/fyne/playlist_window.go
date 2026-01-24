@@ -168,7 +168,7 @@ func (w *PlaylistWindow) findActualIndex(filteredIndex int) int {
 	selectedTrack := w.data[filteredIndex]
 
 	// Find this track in the main collection by ID (not FilePath!)
-	// This ensures correct index even when duplicate files exist in playlist
+	// This ensures a correct index even when duplicate files exist in the playlist
 	for i, track := range w.mainCollection {
 		if track.ID == selectedTrack.ID {
 			return i
@@ -179,7 +179,7 @@ func (w *PlaylistWindow) findActualIndex(filteredIndex int) int {
 }
 
 // findFilteredIndex finds the filtered data index for a given main collection index.
-// Returns -1 if the track at mainIndex is not in the filtered data (filtered out by search).
+// Returns -1 if the track at the mainIndex is not in the filtered data (filtered out by search).
 func (w *PlaylistWindow) findFilteredIndex(mainIndex int) int {
 	if mainIndex < 0 || mainIndex >= len(w.mainCollection) {
 		return -1
@@ -190,11 +190,11 @@ func (w *PlaylistWindow) findFilteredIndex(mainIndex int) int {
 		return mainIndex
 	}
 
-	// Find the track from main collection
+	// Find the track from the main collection
 	targetTrack := w.mainCollection[mainIndex]
 
 	// Search for it in the filtered data by ID (not FilePath!)
-	// This ensures correct index even when duplicate files exist in playlist
+	// This ensures the correct index even when duplicate files exist in the playlist
 	for i, track := range w.data {
 		if track.ID == targetTrack.ID {
 			return i
@@ -243,7 +243,7 @@ func (w *PlaylistWindow) onPlaylistUpdated(event domain.Event) {
 		w.updateWindowTitle()
 		w.list.Refresh()
 
-		// Highlight current track AFTER refresh completes
+		// Highlight the current track AFTER refresh completes
 		// Use a small delay to ensure Refresh() has processed
 		time.AfterFunc(10*time.Millisecond, func() {
 			fyneapp.Do(func() {
@@ -252,7 +252,7 @@ func (w *PlaylistWindow) onPlaylistUpdated(event domain.Event) {
 					if filteredIndex >= 0 {
 						w.list.Select(filteredIndex)
 					} else {
-						// Current track is filtered out by search - unselect
+						// The current track is filtered out by search - unselect
 						w.list.UnselectAll()
 					}
 				} else {
@@ -347,7 +347,7 @@ func (w *PlaylistWindow) loadInitialData() {
 	w.updateWindowTitle()
 	w.list.Refresh()
 
-	// Highlight current track (map from main collection index to filtered index)
+	// Highlight the current track (map from main collection index to filtered index)
 	if w.currentIndex >= 0 {
 		filteredIndex := w.findFilteredIndex(w.currentIndex)
 		if filteredIndex >= 0 {
@@ -391,7 +391,7 @@ func (w *PlaylistWindow) SetSelected(index int) {
 			if filteredIndex >= 0 {
 				w.list.Select(filteredIndex)
 			} else {
-				// Current track is filtered out by search
+				// Search filters out the current track
 				w.list.UnselectAll()
 			}
 		} else {

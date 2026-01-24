@@ -21,6 +21,7 @@ type PreferenceService struct {
 	volume            float64
 	loopEnabled       bool
 	visualizerEnabled bool
+	visualizerType    string
 	theme             string
 	lastFolder        string
 	cacheValid        bool
@@ -36,12 +37,13 @@ func NewPreferenceService(
 	bus ports.EventBus,
 ) *PreferenceService {
 	service := &PreferenceService{
-		logger:     logger,
-		repository: repository,
-		bus:        bus,
-		volume:     0.8,    // Default volume
-		theme:      "dark", // Default theme
-		cacheValid: false,
+		logger:         logger,
+		repository:     repository,
+		bus:            bus,
+		volume:         0.8,             // Default volume
+		theme:          "dark",          // Default theme
+		visualizerType: "spectrum_bars", // Default visualizer type
+		cacheValid:     false,
 	}
 
 	logger.Debug("preference service initialized")
@@ -206,6 +208,29 @@ func (s *PreferenceService) SetVisualizerEnabled(enabled bool) error {
 	return nil
 }
 
+// GetVisualizerType returns the saved visualizer type preference.
+func (s *PreferenceService) GetVisualizerType() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.visualizerType == "" {
+		return "spectrum_bars"
+	}
+	return s.visualizerType
+}
+
+// SetVisualizerType saves the visualizer type preference.
+func (s *PreferenceService) SetVisualizerType(visType string) error {
+	s.mu.Lock()
+	s.visualizerType = visType
+	s.mu.Unlock()
+
+	// Note: Visualizer type saving would require extending the PreferencesRepository interface
+	// For now, we just cache it in memory
+
+	return nil
+}
+
 // ResetToDefaults resets all preferences to default values.
 func (s *PreferenceService) ResetToDefaults() error {
 	s.mu.Lock()
@@ -233,11 +258,12 @@ func (s *PreferenceService) GetAllPreferences() map[string]interface{} {
 	defer s.mu.RUnlock()
 
 	return map[string]interface{}{
-		"volume":      s.volume,
-		"loop":        s.loopEnabled,
-		"visualizer":  s.visualizerEnabled,
-		"theme":       s.theme,
-		"last_folder": s.lastFolder,
+		"volume":          s.volume,
+		"loop":            s.loopEnabled,
+		"visualizer":      s.visualizerEnabled,
+		"visualizer_type": s.visualizerType,
+		"theme":           s.theme,
+		"last_folder":     s.lastFolder,
 	}
 }
 
@@ -255,6 +281,8 @@ var _ interface {
 	SetLoopMode(bool) error
 	GetVisualizerEnabled() bool
 	SetVisualizerEnabled(bool) error
+	GetVisualizerType() string
+	SetVisualizerType(string) error
 	GetTheme() string
 	SetTheme(string) error
 	GetLastFolder() string

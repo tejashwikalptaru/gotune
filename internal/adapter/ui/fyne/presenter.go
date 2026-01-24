@@ -44,6 +44,8 @@ type UIView interface {
 	UpdateVisualizer(data []float32)
 	SetVisualizerEnabled(enabled bool)
 	IsVisualizerEnabled() bool
+	SetVisualizerType(visType string)
+	GetVisualizerType() string
 
 	// Notifications
 	ShowNotification(title, message string)
@@ -90,7 +92,7 @@ type Presenter struct {
 	// Concurrency control
 	mu           sync.RWMutex
 	shutdownOnce sync.Once
-	progressWg   sync.WaitGroup // WaitGroup to wait for progress goroutine to exit
+	progressWg   sync.WaitGroup // WaitGroup to wait for the progress goroutine to exit
 }
 
 // NewPresenter creates a new presenter.
@@ -117,7 +119,7 @@ func NewPresenter(
 	// Subscribe to events
 	p.subscribeToEvents()
 
-	// Sync UI with current state
+	// Sync UI with the current state
 	p.syncInitialState()
 
 	// Start progress ticker
@@ -167,7 +169,9 @@ func (p *Presenter) syncInitialState() {
 	p.view.SetLoopState(state.IsLooping)
 	p.view.SetMuteState(state.IsMuted)
 
-	// Restore visualizer preference
+	// Restore visualizer preferences
+	visualizerType := p.preferenceService.GetVisualizerType()
+	p.view.SetVisualizerType(visualizerType)
 	visualizerEnabled := p.preferenceService.GetVisualizerEnabled()
 	p.view.SetVisualizerEnabled(visualizerEnabled)
 	if visualizerEnabled {
@@ -198,7 +202,7 @@ func (p *Presenter) syncInitialState() {
 	// Update play state
 	p.view.SetPlayState(state.Status == domain.StatusPlaying)
 
-	// Update progress if track is loaded
+	// Update progress if the track is loaded
 	if state.Duration > 0 {
 		p.view.SetProgress(state.Position.Seconds(), state.Duration.Seconds())
 		p.view.SetCurrentTime(state.Position.Seconds())
@@ -266,7 +270,7 @@ func (p *Presenter) onTrackCompleted(event domain.Event) {
 	p.isPlaying = false
 	p.mu.Unlock()
 
-	// Update UI to show play state (not pause)
+	// Update UI to show the play state (not pause)
 	p.view.SetPlayState(false)
 }
 
@@ -508,7 +512,7 @@ func (p *Presenter) OnFolderOpened(folderPath string) error {
 	return nil
 }
 
-// OnTrackSelected handles track selection from playlist.
+// OnTrackSelected handles track selection from a playlist.
 func (p *Presenter) OnTrackSelected(trackPath string) error {
 	// PlayTrackByPath returns (index, error)
 	_, err := p.playlistService.PlayTrackByPath(trackPath)
@@ -520,7 +524,7 @@ func (p *Presenter) OnPlaylistMenuClicked() {
 	p.view.ShowPlaylistWindow()
 }
 
-// OnPlaylistTrackSelected handles track selection from playlist window by index.
+// OnPlaylistTrackSelected handles track selection from a playlist window by index.
 func (p *Presenter) OnPlaylistTrackSelected(index int) error {
 	return p.playlistService.PlayTrackAt(index)
 }
@@ -540,6 +544,11 @@ func (p *Presenter) OnVisualizerModeChanged(enabled bool) {
 
 	// Save preference
 	p.preferenceService.SetVisualizerEnabled(enabled)
+}
+
+// OnVisualizerTypeChanged handles visualizer type changes from the UI.
+func (p *Presenter) OnVisualizerTypeChanged(visType string) {
+	p.preferenceService.SetVisualizerType(visType)
 }
 
 // StartVisualizerUpdates starts the visualizer update loop (~30fps).
@@ -586,7 +595,7 @@ func (p *Presenter) StopVisualizerUpdates() {
 
 	p.mu.Unlock()
 
-	// Wait for goroutine to finish
+	// Wait for the goroutine to finish
 	p.visualizerWg.Wait()
 }
 

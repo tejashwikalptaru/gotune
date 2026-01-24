@@ -54,7 +54,7 @@ func NewLibraryService(
 			".wma",
 			".wv",          // WavPack
 			".ape", ".mac", // APE
-			".mpc", ".mp+", ".mpp", // Musepack
+			".mpc", ".mp+", ".mpp", // Muse pack
 			".ofr", ".ofs", // OptimFROG
 			".tta",         // TTA
 			".adx", ".aix", // ADX

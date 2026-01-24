@@ -19,7 +19,7 @@ func NewLogger(cfg Config) *slog.Logger {
 
 	opts := &slog.HandlerOptions{
 		Level: cfg.Level,
-		// Add source location for debug and error levels
+		// Add a source location for debug and error levels
 		AddSource: cfg.Level <= slog.LevelDebug,
 	}
 
@@ -32,7 +32,7 @@ func NewLogger(cfg Config) *slog.Logger {
 	return slog.New(handler)
 }
 
-// DefaultConfig returns default logger configuration.
+// DefaultConfig returns the default logger configuration.
 // Parses the GOTUNE_LOG_LEVEL environment variable to set the log level.
 // Valid values: DEBUG, INFO, WARN, WARNING, ERROR
 // Default: INFO

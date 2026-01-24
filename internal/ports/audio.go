@@ -43,7 +43,7 @@ type AudioEngine interface {
 	Load(filePath string) (domain.TrackHandle, error)
 
 	// Unload releases resources for a previously loaded track.
-	// This is called automatically by Stop, but can be called explicitly if needed.
+	// This is called automatically by Stop but can be called explicitly if needed.
 	//
 	// Returns an error if the handle is invalid or unloading fails.
 	Unload(handle domain.TrackHandle) error

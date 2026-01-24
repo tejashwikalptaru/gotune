@@ -33,7 +33,7 @@ type PlaybackService struct {
 	mu            sync.RWMutex
 	stopUpdate    chan struct{}
 	updateRunning bool
-	updateWg      sync.WaitGroup // WaitGroup to wait for update goroutine to exit
+	updateWg      sync.WaitGroup // WaitGroup to wait for the update goroutine to exit
 	manualStop    bool           // True if the user explicitly stopped playback
 	hasPlayed     bool           // True if the current track has been played
 }
@@ -405,7 +405,7 @@ func (s *PlaybackService) Shutdown() error {
 		s.updateRunning = false
 	}
 
-	// Release lock before waiting for goroutine to exit (to avoid deadlock)
+	// Release the lock before waiting for goroutine to exit (to avoid deadlock)
 	s.mu.Unlock()
 
 	// Wait for the update goroutine to finish

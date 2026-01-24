@@ -99,7 +99,7 @@ func NewApplication(config Config) (*Application, error) {
 		app.fyneApp = fyneapp.NewWithID(config.AppID)
 	}
 
-	// Step 1.5: Create logger
+	// Step 1.5: Create a logger
 	loggerCfg := logger.Config{
 		Level:  config.LogLevel,
 		Format: "text",
@@ -186,10 +186,10 @@ func NewApplication(config Config) (*Application, error) {
 		app.mainWindow,
 	)
 
-	// Connect presenter to the main window
+	// Connect the presenter to the main window
 	app.mainWindow.SetPresenter(app.presenter)
 
-	// Set callback to save state before window closes
+	// Set callback to save state before a window closes.
 	// This ensures state is persisted even when quitting via Cmd+Q or window close button
 	app.mainWindow.SetOnBeforeClose(func() {
 		if err := app.saveState(); err != nil {

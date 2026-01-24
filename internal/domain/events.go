@@ -371,7 +371,7 @@ func NewScanCompletedEvent(tracks []MusicTrack) ScanCompletedEvent {
 	}
 }
 
-// ScanCancelledEvent is published when a library scan is cancelled.
+// ScanCancelledEvent is published when a library scan is canceled.
 type ScanCancelledEvent struct {
 	baseEvent
 	Reason string

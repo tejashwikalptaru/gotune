@@ -83,7 +83,7 @@ func (r *PlaylistRepository) LoadAll() ([]*domain.Playlist, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	// Get list of playlist IDs
+	// Get a list of playlist IDs
 	ids, err := r.loadPlaylistIDs()
 	if err != nil {
 		return nil, err

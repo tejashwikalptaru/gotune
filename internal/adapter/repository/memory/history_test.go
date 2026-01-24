@@ -11,7 +11,7 @@ import (
 
 // Helper to create a test history repository
 func newTestHistoryRepository() *HistoryRepository {
-	// Use Fyne's test app which provides an in-memory preferences backend
+	// Use Fyne's test app, which provides an in-memory preferences backend
 	app := test.NewApp()
 	prefs := app.Preferences()
 
@@ -68,11 +68,11 @@ func TestHistoryRepository_LoadQueue_Empty(t *testing.T) {
 func TestHistoryRepository_SaveQueue_EmptySlice(t *testing.T) {
 	repo := newTestHistoryRepository()
 
-	// Save empty queue
+	// Save an empty queue
 	err := repo.SaveQueue([]domain.MusicTrack{})
 	require.NoError(t, err)
 
-	// Load should return empty slice
+	// Load should return an empty slice
 	loaded, err := repo.LoadQueue()
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(loaded))
@@ -81,14 +81,14 @@ func TestHistoryRepository_SaveQueue_EmptySlice(t *testing.T) {
 func TestHistoryRepository_SaveQueue_OverwritesPrevious(t *testing.T) {
 	repo := newTestHistoryRepository()
 
-	// Save first queue
+	// Save the first queue
 	tracks1 := []domain.MusicTrack{
 		{ID: "track1", FilePath: "/music/song1.mp3"},
 	}
 	err := repo.SaveQueue(tracks1)
 	require.NoError(t, err)
 
-	// Save second queue (should overwrite)
+	// Save the second queue (should overwrite)
 	tracks2 := []domain.MusicTrack{
 		{ID: "track2", FilePath: "/music/song2.mp3"},
 		{ID: "track3", FilePath: "/music/song3.mp3"},
@@ -96,7 +96,7 @@ func TestHistoryRepository_SaveQueue_OverwritesPrevious(t *testing.T) {
 	err = repo.SaveQueue(tracks2)
 	require.NoError(t, err)
 
-	// Load should return second queue
+	// Load should return the second queue
 	loaded, err := repo.LoadQueue()
 	require.NoError(t, err)
 	require.Equal(t, 2, len(loaded))
@@ -197,7 +197,7 @@ func TestHistoryRepository_SaveLoadCycle(t *testing.T) {
 func TestHistoryRepository_LargQueue(t *testing.T) {
 	repo := newTestHistoryRepository()
 
-	// Create large queue (1000 tracks)
+	// Create a large queue (1000 tracks)
 	tracks := make([]domain.MusicTrack, 1000)
 	for i := 0; i < 1000; i++ {
 		tracks[i] = domain.MusicTrack{

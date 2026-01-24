@@ -1,4 +1,4 @@
-package rotate
+package widgets
 
 import "fmt"
 

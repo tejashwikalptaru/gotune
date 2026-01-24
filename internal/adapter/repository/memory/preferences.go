@@ -18,7 +18,7 @@ type PreferencesRepository struct {
 	mu    sync.RWMutex
 }
 
-// NewPreferencesRepository creates a new preferences repository.
+// NewPreferencesRepository creates a new preferences' repository.
 // The preferences parameter should be obtained from fyne.CurrentApp().Preferences().
 func NewPreferencesRepository(prefs fyne.Preferences) *PreferencesRepository {
 	return &PreferencesRepository{

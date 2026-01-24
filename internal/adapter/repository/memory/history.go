@@ -1,5 +1,4 @@
 // Package memory provides in-memory repository implementations using Fyne preferences.
-// This replaces hardcoded file paths with OS-specific app data directories.
 package memory
 
 import (
@@ -12,7 +11,6 @@ import (
 )
 
 // HistoryRepository implements ports.HistoryRepository using Fyne preferences.
-// This fixes the hardcoded path issue (/Users/tejashwi/.../queue.gtp).
 //
 // Fyne preferences automatically use OS-specific app data directories:
 // - macOS: ~/Library/Preferences/com.gotune.app.plist
@@ -77,7 +75,7 @@ func (r *HistoryRepository) SaveCurrentIndex(index int) error {
 	defer r.mu.Unlock()
 
 	// Store index+1 to distinguish between "not set" (0) and "saved 0" (1)
-	// This is because Fyne returns 0 if key doesn't exist
+	// This is because Fyne returns 0 if the key doesn't exist
 	r.prefs.SetInt("history.current_index", index+1)
 	return nil
 }

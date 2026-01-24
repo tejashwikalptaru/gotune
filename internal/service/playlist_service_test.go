@@ -222,27 +222,27 @@ func TestPlaylistService_AddTrack_ReplaceCurrentlyPlaying(t *testing.T) {
 	trackA := createTestTrack("A", "Song A", "/test/songA.mp3")
 	trackB := createTestTrack("B", "Song B", "/test/songB.mp3")
 
-	// Add and play first track
+	// Add and play the first track
 	err := ts.playlist.AddTrack(trackA, true)
 	require.NoError(t, err)
 
-	// Verify first track is playing
+	// Verify the first track is playing
 	state := ts.playback.GetState()
 	assert.NotNil(t, state.CurrentTrack)
 	assert.Equal(t, "A", state.CurrentTrack.ID)
 	assert.Equal(t, domain.StatusPlaying, state.Status)
 
-	// Add second track with playImmediately=true (should replace current)
+	// Add a second track with playImmediately=true (should replace current)
 	err = ts.playlist.AddTrack(trackB, true)
 	require.NoError(t, err)
 
-	// Verify second track is now playing
+	// Verify the second track is now playing
 	state = ts.playback.GetState()
 	assert.NotNil(t, state.CurrentTrack)
 	assert.Equal(t, "B", state.CurrentTrack.ID)
 	assert.Equal(t, domain.StatusPlaying, state.Status)
 
-	// Verify queue has both tracks
+	// Verify the queue has both tracks
 	assert.Equal(t, 2, ts.playlist.GetQueueLength())
 	assert.Equal(t, 1, ts.playlist.GetCurrentIndex())
 }
@@ -542,7 +542,7 @@ func TestPlaylistService_PlayNext_EndOfQueue(t *testing.T) {
 		t.Fatalf("Failed to add track: %v", err)
 	}
 
-	// Try to play next (at the end of queue)
+	// Try to play next (at the end of the queue)
 	err := ts.playlist.PlayNext()
 	assert.Equal(t, domain.ErrEndOfQueue, err)
 }
@@ -776,7 +776,7 @@ func TestPlaylistService_AutoNext(t *testing.T) {
 	// Give the handler time to process the event and start the next track
 	// The handler advances to the next track and loads/plays it
 	// Note: In real scenario, this would be triggered by playback service
-	// when track finishes playing
+	// when the track finishes playing
 
 	// Verify current index advanced to next track
 	assert.Equal(t, 1, ts.playlist.GetCurrentIndex())
@@ -885,7 +885,7 @@ func TestPlaylistService_AddTrack_Duplicate(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, ts.playlist.GetQueueLength())
 
-	// Add same track again - should fail with duplicate error
+	// Add the same track again - should fail with a duplicate error
 	err = ts.playlist.AddTrack(track, false)
 	assert.Equal(t, domain.ErrDuplicateTrack, err)
 	assert.Equal(t, 1, ts.playlist.GetQueueLength()) // Queue unchanged
@@ -902,11 +902,11 @@ func TestPlaylistService_AddTrack_Duplicate_DifferentID_SamePath(t *testing.T) {
 	track1 := createTestTrack("1", "Song 1", "/test/song.mp3")
 	track2 := createTestTrack("2", "Song 2", "/test/song.mp3") // Different ID, same path
 
-	// Add first track
+	// Add the first track
 	err := ts.playlist.AddTrack(track1, false)
 	require.NoError(t, err)
 
-	// Try to add second track with same path
+	// Try to add a second track with the same path
 	err = ts.playlist.AddTrack(track2, false)
 	assert.Equal(t, domain.ErrDuplicateTrack, err)
 	assert.Equal(t, 1, ts.playlist.GetQueueLength())
@@ -923,12 +923,12 @@ func TestPlaylistService_AddTracks_FilterDuplicates(t *testing.T) {
 	track1 := createTestTrack("1", "Song 1", "/test/song1.mp3")
 	track2 := createTestTrack("2", "Song 2", "/test/song2.mp3")
 
-	// Add first track
+	// Add the first track
 	err := ts.playlist.AddTrack(track1, false)
 	require.NoError(t, err)
 	assert.Equal(t, 1, ts.playlist.GetQueueLength())
 
-	// Add batch with duplicate + new track
+	// Add a batch with duplicate + new track
 	tracksToAdd := []domain.MusicTrack{
 		track1, // duplicate
 		track2, // new
@@ -976,12 +976,12 @@ func TestPlaylistService_AddTracks_PartialDuplicates(t *testing.T) {
 	track2 := createTestTrack("2", "Song 2", "/test/song2.mp3")
 	track3 := createTestTrack("3", "Song 3", "/test/song3.mp3")
 
-	// Add first two tracks
+	// Add the first two tracks
 	err := ts.playlist.AddTracks([]domain.MusicTrack{track1, track2}, false)
 	require.NoError(t, err)
 	assert.Equal(t, 2, ts.playlist.GetQueueLength())
 
-	// Add batch with some duplicates
+	// Add a batch with some duplicates
 	tracksToAdd := []domain.MusicTrack{
 		track1, // duplicate
 		track3, // new
@@ -1047,7 +1047,7 @@ func TestPlaylistService_Duplicate_PlayImmediately(t *testing.T) {
 	assert.Equal(t, 1, ts.playlist.GetQueueLength())
 	assert.Equal(t, 0, ts.playlist.GetCurrentIndex())
 
-	// Try to add same track with playImmediately=true
+	// Try to add the same track with playImmediately=true
 	err = ts.playlist.AddTrack(track, true)
 	assert.Equal(t, domain.ErrDuplicateTrack, err)
 	assert.Equal(t, 1, ts.playlist.GetQueueLength())
@@ -1150,7 +1150,7 @@ func TestPlaylistService_PlayPrevious_PublishesEvent(t *testing.T) {
 		t.Fatalf("Failed to add tracks: %v", err)
 	} // Start playing first
 
-	// Move to second track
+	// Move to the second track
 	if err := ts.playlist.PlayNext(); err != nil {
 		t.Fatalf("Failed to play next: %v", err)
 	}

@@ -144,7 +144,7 @@ func TestPreferencesRepository_SaveAndLoadScanPaths(t *testing.T) {
 func TestPreferencesRepository_LoadScanPaths_Empty(t *testing.T) {
 	repo := newTestPreferencesRepository()
 
-	// Load when nothing saved - should return empty slice
+	// Load when nothing saved - should return an empty slice
 	paths, err := repo.LoadScanPaths()
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(paths))
@@ -157,7 +157,7 @@ func TestPreferencesRepository_SaveScanPaths_EmptySlice(t *testing.T) {
 	err := repo.SaveScanPaths([]string{})
 	require.NoError(t, err)
 
-	// Load should return empty slice
+	// Load should return an empty slice
 	paths, err := repo.LoadScanPaths()
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(paths))

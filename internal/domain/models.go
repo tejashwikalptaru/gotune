@@ -187,7 +187,7 @@ type ScanProgress struct {
 	// FilesScanned is the number of files processed so far
 	FilesScanned int
 
-	// TotalFiles is the total number of files to scan (may be -1 if unknown)
+	// TotalFiles is the total number of files to scan (maybe -1 if unknown)
 	TotalFiles int
 
 	// TracksFound is the number of valid music tracks found
@@ -199,7 +199,7 @@ func (p ScanProgress) IsValid() bool {
 	return p.FilesScanned >= 0 && p.TracksFound >= 0
 }
 
-// Percentage returns the completion percentage (0-100), or -1 if total is unknown.
+// Percentage returns the completion percentage (0-100), or -1 if the total is unknown.
 func (p ScanProgress) Percentage() float64 {
 	if p.TotalFiles <= 0 {
 		return -1

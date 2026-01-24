@@ -12,9 +12,10 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// Visualizer is a widget that displays audio spectrum bars.
+// SpectrumBarVisualizer is a widget that displays audio spectrum bars.
 // It uses logarithmic frequency distribution for better visual representation.
-type Visualizer struct {
+// It implements the MusicVisualizer interface.
+type SpectrumBarVisualizer struct {
 	widget.BaseWidget
 
 	raster     *canvas.Raster
@@ -33,7 +34,7 @@ type Visualizer struct {
 	paddingLeft  float32
 	paddingRight float32
 
-	// Layout cache (recalculated only when size changes)
+	// Layout cache (recalculated only when the size changes)
 	lastWidth        int
 	lastHeight       int
 	cachedBarWidth   int
@@ -46,9 +47,9 @@ type Visualizer struct {
 	cachedPaddingT   int
 }
 
-// NewVisualizer creates a new visualizer widget with the specified number of bars.
-func NewVisualizer(numBars int) *Visualizer {
-	v := &Visualizer{
+// NewSpectrumBarVisualizer creates a new spectrum bar visualizer widget with the specified number of bars.
+func NewSpectrumBarVisualizer(numBars int) *SpectrumBarVisualizer {
+	v := &SpectrumBarVisualizer{
 		numBars:      numBars,
 		capHeights:   make([]float32, numBars),
 		capHeight:    2,
@@ -66,19 +67,19 @@ func NewVisualizer(numBars int) *Visualizer {
 }
 
 // CreateRenderer implements fyne.Widget.
-func (v *Visualizer) CreateRenderer() fyne.WidgetRenderer {
+func (v *SpectrumBarVisualizer) CreateRenderer() fyne.WidgetRenderer {
 	return widget.NewSimpleRenderer(v.raster)
 }
 
 // MinSize returns the minimum size of the visualizer.
 // Returns a minimal size so the widget expands to fill available space.
-func (v *Visualizer) MinSize() fyne.Size {
+func (v *SpectrumBarVisualizer) MinSize() fyne.Size {
 	return fyne.NewSize(0, 0)
 }
 
 // UpdateFFT updates the visualizer with new FFT data.
 // This should be called periodically (e.g., 30fps) from the presenter.
-func (v *Visualizer) UpdateFFT(data []float32) {
+func (v *SpectrumBarVisualizer) UpdateFFT(data []float32) {
 	v.mu.Lock()
 	v.fftData = data
 	v.mu.Unlock()
@@ -88,7 +89,7 @@ func (v *Visualizer) UpdateFFT(data []float32) {
 }
 
 // draw is the raster generator function that renders the visualizer.
-func (v *Visualizer) draw(w, h int) image.Image {
+func (v *SpectrumBarVisualizer) draw(w, h int) image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 	v.fillBackground(img, w, h)
 
@@ -127,7 +128,7 @@ func (v *Visualizer) draw(w, h int) image.Image {
 
 // calculateBarHeights converts FFT data to bar heights using logarithmic bin mapping.
 // This is based on the BASS spectrum.c example for better frequency distribution.
-func (v *Visualizer) calculateBarHeights(fftData []float32, height int) []float32 {
+func (v *SpectrumBarVisualizer) calculateBarHeights(fftData []float32, height int) []float32 {
 	heights := make([]float32, v.numBars)
 
 	if len(fftData) < 2 {
@@ -184,7 +185,7 @@ func (v *Visualizer) calculateBarHeights(fftData []float32, height int) []float3
 
 // getGradientColor returns a color from the gradient based on position (0.0 to 1.0).
 // Gradient: Red (#f00) at bottom -> Yellow (#ff0) middle -> Green (#0f0) top
-func (v *Visualizer) getGradientColor(pos float64) color.RGBA {
+func (v *SpectrumBarVisualizer) getGradientColor(pos float64) color.RGBA {
 	if pos < 0 {
 		pos = 0
 	}
@@ -210,7 +211,7 @@ func (v *Visualizer) getGradientColor(pos float64) color.RGBA {
 }
 
 // Reset clears the visualizer state.
-func (v *Visualizer) Reset() {
+func (v *SpectrumBarVisualizer) Reset() {
 	v.mu.Lock()
 	v.fftData = nil
 	for i := range v.capHeights {
@@ -223,7 +224,7 @@ func (v *Visualizer) Reset() {
 
 // recalculateLayout computes and caches size-dependent layout values.
 // This should only be called when widget dimensions change.
-func (v *Visualizer) recalculateLayout(w, h int) {
+func (v *SpectrumBarVisualizer) recalculateLayout(w, h int) {
 	v.lastWidth = w
 	v.lastHeight = h
 
@@ -258,7 +259,7 @@ func (v *Visualizer) recalculateLayout(w, h int) {
 }
 
 // fillBackground fills the image with black color.
-func (v *Visualizer) fillBackground(img *image.RGBA, w, h int) {
+func (v *SpectrumBarVisualizer) fillBackground(img *image.RGBA, w, h int) {
 	for y := range h {
 		for x := range w {
 			img.Set(x, y, color.Black)
@@ -268,7 +269,7 @@ func (v *Visualizer) fillBackground(img *image.RGBA, w, h int) {
 
 // updateCapHeights updates cap positions with falling animation.
 // Must be called with v.mu locked.
-func (v *Visualizer) updateCapHeights(barHeights []float32, caps []float32) {
+func (v *SpectrumBarVisualizer) updateCapHeights(barHeights []float32, caps []float32) {
 	for i := 0; i < v.numBars && i < len(barHeights); i++ {
 		barH := barHeights[i]
 		if barH > caps[i] {
@@ -283,7 +284,7 @@ func (v *Visualizer) updateCapHeights(barHeights []float32, caps []float32) {
 }
 
 // drawBars renders all bars and their caps to the image.
-func (v *Visualizer) drawBars(img *image.RGBA, barHeights []float32, caps []float32, h int) {
+func (v *SpectrumBarVisualizer) drawBars(img *image.RGBA, barHeights []float32, caps []float32, h int) {
 	totalBarWidth := v.cachedBarWidth + v.cachedActualGap
 
 	for i := 0; i < v.numBars && i < len(barHeights); i++ {
@@ -296,7 +297,7 @@ func (v *Visualizer) drawBars(img *image.RGBA, barHeights []float32, caps []floa
 }
 
 // drawSingleBar renders one bar with gradient coloring.
-func (v *Visualizer) drawSingleBar(img *image.RGBA, barX, barH, h int) {
+func (v *SpectrumBarVisualizer) drawSingleBar(img *image.RGBA, barX, barH, h int) {
 	maxX := img.Bounds().Max.X - v.cachedPaddingR
 
 	for y := 0; y < barH && y < v.cachedEffectiveH; y++ {
@@ -312,7 +313,7 @@ func (v *Visualizer) drawSingleBar(img *image.RGBA, barX, barH, h int) {
 }
 
 // drawCap renders the falling cap for a bar.
-func (v *Visualizer) drawCap(img *image.RGBA, barX, capY, h int) {
+func (v *SpectrumBarVisualizer) drawCap(img *image.RGBA, barX, capY, h int) {
 	if capY <= 0 || capY >= v.cachedEffectiveH {
 		return
 	}
@@ -328,3 +329,6 @@ func (v *Visualizer) drawCap(img *image.RGBA, barX, capY, h int) {
 		}
 	}
 }
+
+// Verify interface implementation at compile time.
+var _ MusicVisualizer = (*SpectrumBarVisualizer)(nil)

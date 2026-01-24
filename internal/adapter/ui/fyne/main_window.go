@@ -14,7 +14,6 @@ import (
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/tejashwikalptaru/gotune/internal/adapter/ui/fyne/rotate"
 	customwidgets "github.com/tejashwikalptaru/gotune/internal/adapter/ui/fyne/widgets"
 	"github.com/tejashwikalptaru/gotune/res"
 )
@@ -46,17 +45,18 @@ type MainWindow struct {
 
 	// State
 	isDarkTheme      bool
-	rotator          *rotate.Rotator
+	rotator          *customwidgets.Rotator
 	stopScroll       chan struct{}
 	updatingProgress bool
 	progressMu       sync.Mutex
 
 	// Visualizer components
-	visualizer        *customwidgets.Visualizer
-	albumArtStack     *fyneapp.Container
-	tappableStack     *customwidgets.TappableStack
-	visualizerEnabled bool
-	visualizerMu      sync.Mutex
+	visualizer            customwidgets.MusicVisualizer
+	currentVisualizerType customwidgets.VisualizerType
+	albumArtStack         *fyneapp.Container
+	tappableStack         *customwidgets.TappableStack
+	visualizerEnabled     bool
+	visualizerMu          sync.Mutex
 
 	// Playlist window (optional)
 	playlistWindow *PlaylistWindow
@@ -100,7 +100,7 @@ func NewMainWindow(app fyneapp.App) *MainWindow {
 	}
 
 	// Initialize rotator (but don't start the goroutine yet)
-	w.rotator = rotate.NewRotator(APPNAME, 15)
+	w.rotator = customwidgets.NewRotator(APPNAME, 15)
 	w.stopScroll = make(chan struct{})
 
 	// Set close intercept to ensure the state is saved before the window closes
@@ -135,7 +135,8 @@ func (w *MainWindow) buildUI() {
 	w.albumArt.FillMode = canvas.ImageFillContain
 
 	// Visualizer (hidden by default, 48 bars for good visual balance)
-	w.visualizer = customwidgets.NewVisualizer(48)
+	w.currentVisualizerType = customwidgets.VisualizerTypeSpectrumBars
+	w.visualizer = customwidgets.VisualizerFactory(w.currentVisualizerType, 48)
 	w.visualizer.Hide()
 
 	// Stack album art and visualizer (only one visible at a time)
@@ -365,7 +366,7 @@ func (w *MainWindow) ShowAndRun() {
 // It's safe to call multiple times (idempotent).
 func (w *MainWindow) Close() {
 	w.closeOnce.Do(func() {
-		// Close playlist window if open
+		// Close the playlist window if open
 		w.ClosePlaylistWindow()
 
 		// Signal the scroll goroutine to stop
@@ -453,7 +454,7 @@ func (w *MainWindow) SetTrackInfo(title, artist, album string) {
 		}
 
 		// Update rotator for scrolling text
-		w.rotator = rotate.NewRotator(text, 15)
+		w.rotator = customwidgets.NewRotator(text, 15)
 		// Set initial label text
 		w.songInfo.SetText(text)
 	})
@@ -532,7 +533,7 @@ func (w *MainWindow) ShowPlaylistWindow() {
 				w.presenter,
 				w.presenter.EventBus,
 			)
-			// Set callback to clear reference when window is closed
+			// Set callback to clear reference when a window is closed
 			w.playlistWindow.SetOnWindowClosed(func() {
 				fyneapp.Do(func() {
 					w.playlistWindow = nil
@@ -564,38 +565,85 @@ func (w *MainWindow) ShowNotification(title, message string) {
 	})
 }
 
-// showDisplayModeMenu shows a context menu for switching between album art and visualizer.
+// showDisplayModeMenu shows a context menu for switching between album art and visualizer types.
 func (w *MainWindow) showDisplayModeMenu(pos fyneapp.Position) {
 	w.visualizerMu.Lock()
 	isVisualizerMode := w.visualizerEnabled
+	currentType := w.currentVisualizerType
 	w.visualizerMu.Unlock()
 
-	// Create menu items with checkmarks for the current selection
+	// Create an album art menu item with checkmark if selected
 	albumArtLabel := "Album Art"
-	visualizerLabel := "Visualizer"
 	if !isVisualizerMode {
-		albumArtLabel = "\u2713 " + albumArtLabel // Checkmark
-	} else {
-		visualizerLabel = "\u2713 " + visualizerLabel // Checkmark
+		albumArtLabel = "\u2713 " + albumArtLabel
 	}
 
-	menu := fyneapp.NewMenu("",
-		fyneapp.NewMenuItem(albumArtLabel, func() {
-			w.SetVisualizerEnabled(false)
-			if w.presenter != nil {
-				w.presenter.OnVisualizerModeChanged(false)
-			}
-		}),
-		fyneapp.NewMenuItem(visualizerLabel, func() {
-			w.SetVisualizerEnabled(true)
-			if w.presenter != nil {
-				w.presenter.OnVisualizerModeChanged(true)
-			}
-		}),
-	)
+	albumArtItem := fyneapp.NewMenuItem(albumArtLabel, func() {
+		w.SetVisualizerEnabled(false)
+		if w.presenter != nil {
+			w.presenter.OnVisualizerModeChanged(false)
+		}
+	})
 
+	// Create visualizer submenu items
+	visualizerTypes := customwidgets.GetVisualizerTypes()
+	visualizerItems := make([]*fyneapp.MenuItem, len(visualizerTypes))
+	for i, vt := range visualizerTypes {
+		visType := vt.Type // capture for closure
+		label := vt.Name
+		if isVisualizerMode && currentType == visType {
+			label = "\u2713 " + label
+		}
+		visualizerItems[i] = fyneapp.NewMenuItem(label, func() {
+			w.switchVisualizer(visType)
+		})
+	}
+
+	// Create visualizer submenu
+	visualizerSubmenu := fyneapp.NewMenuItem("Visualizer", nil)
+	visualizerSubmenu.ChildMenu = fyneapp.NewMenu("", visualizerItems...)
+
+	menu := fyneapp.NewMenu("", albumArtItem, visualizerSubmenu)
 	popup := widget.NewPopUpMenu(menu, w.window.Canvas())
 	popup.ShowAtPosition(pos)
+}
+
+// switchVisualizer switches to a different visualizer type.
+func (w *MainWindow) switchVisualizer(visType customwidgets.VisualizerType) {
+	w.visualizerMu.Lock()
+	if w.currentVisualizerType == visType && w.visualizerEnabled {
+		w.visualizerMu.Unlock()
+		return // Already using this visualizer
+	}
+	w.visualizerMu.Unlock()
+
+	fyneapp.Do(func() {
+		w.visualizerMu.Lock()
+		defer w.visualizerMu.Unlock()
+
+		// Hide and reset old visualizer
+		if w.visualizer != nil {
+			w.visualizer.Hide()
+			w.visualizer.Reset()
+		}
+
+		// Create a new visualizer
+		w.currentVisualizerType = visType
+		w.visualizer = customwidgets.VisualizerFactory(visType, 48)
+		w.visualizerEnabled = true
+
+		// Update the stack container
+		w.albumArt.Hide()
+		w.albumArtStack.Objects = []fyneapp.CanvasObject{w.albumArt, w.visualizer}
+		w.visualizer.Show()
+		w.albumArtStack.Refresh()
+
+		// Notify presenter
+		if w.presenter != nil {
+			w.presenter.OnVisualizerModeChanged(true)
+			w.presenter.OnVisualizerTypeChanged(string(visType))
+		}
+	})
 }
 
 // UpdateVisualizer updates the visualizer with new FFT data.
@@ -629,6 +677,55 @@ func (w *MainWindow) SetVisualizerEnabled(enabled bool) {
 
 		w.albumArtStack.Refresh()
 	})
+}
+
+// setVisualizerTypeInternal changes the current visualizer type without enabling/disabling.
+func (w *MainWindow) setVisualizerTypeInternal(visType customwidgets.VisualizerType) {
+	fyneapp.Do(func() {
+		w.visualizerMu.Lock()
+		defer w.visualizerMu.Unlock()
+
+		if w.currentVisualizerType == visType {
+			return
+		}
+
+		wasEnabled := w.visualizerEnabled
+
+		// Hide and reset old visualizer
+		if w.visualizer != nil {
+			w.visualizer.Hide()
+			w.visualizer.Reset()
+		}
+
+		// Create a new visualizer
+		w.currentVisualizerType = visType
+		w.visualizer = customwidgets.VisualizerFactory(visType, 48)
+
+		// Update the stack container
+		w.albumArtStack.Objects = []fyneapp.CanvasObject{w.albumArt, w.visualizer}
+
+		if wasEnabled {
+			w.visualizer.Show()
+			w.albumArt.Hide()
+		} else {
+			w.visualizer.Hide()
+			w.albumArt.Show()
+		}
+
+		w.albumArtStack.Refresh()
+	})
+}
+
+// GetVisualizerType returns the current visualizer type as a string.
+func (w *MainWindow) GetVisualizerType() string {
+	w.visualizerMu.Lock()
+	defer w.visualizerMu.Unlock()
+	return string(w.currentVisualizerType)
+}
+
+// SetVisualizerType sets the visualizer type from a string (implements UIView interface).
+func (w *MainWindow) SetVisualizerType(visType string) {
+	w.setVisualizerTypeInternal(customwidgets.VisualizerType(visType))
 }
 
 // IsVisualizerEnabled returns whether the visualizer is currently enabled.

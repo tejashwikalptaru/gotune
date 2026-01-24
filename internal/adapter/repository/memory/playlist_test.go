@@ -21,7 +21,7 @@ func newTestPlaylistRepository() *PlaylistRepository {
 func TestPlaylistRepository_SaveAndLoad(t *testing.T) {
 	repo := newTestPlaylistRepository()
 
-	// Create test playlist
+	// Create a test playlist
 	playlist := &domain.Playlist{
 		ID:   "playlist1",
 		Name: "My Favorites",
@@ -53,7 +53,7 @@ func TestPlaylistRepository_SaveAndLoad(t *testing.T) {
 func TestPlaylistRepository_Load_NotFound(t *testing.T) {
 	repo := newTestPlaylistRepository()
 
-	// Try to load non-existent playlist
+	// Try to load a non-existent playlist
 	_, err := repo.Load("nonexistent")
 	assert.Error(t, err)
 	// Should be ErrPlaylistNotFound
@@ -62,7 +62,7 @@ func TestPlaylistRepository_Load_NotFound(t *testing.T) {
 func TestPlaylistRepository_SaveOverwrites(t *testing.T) {
 	repo := newTestPlaylistRepository()
 
-	// Save first version
+	// Save the first version
 	playlist1 := &domain.Playlist{
 		ID:   "playlist1",
 		Name: "Original Name",
@@ -85,7 +85,7 @@ func TestPlaylistRepository_SaveOverwrites(t *testing.T) {
 	err = repo.Save(playlist2)
 	require.NoError(t, err)
 
-	// Load should return updated version
+	// Load should return an updated version
 	loaded, err := repo.Load("playlist1")
 	require.NoError(t, err)
 	assert.Equal(t, "Updated Name", loaded.Name)
@@ -211,7 +211,7 @@ func TestPlaylistRepository_SaveLoadCycle(t *testing.T) {
 func TestPlaylistRepository_EmptyPlaylist(t *testing.T) {
 	repo := newTestPlaylistRepository()
 
-	// Save playlist with no tracks
+	// Save a playlist with no tracks
 	playlist := &domain.Playlist{
 		ID:     "empty",
 		Name:   "Empty Playlist",
@@ -229,7 +229,7 @@ func TestPlaylistRepository_EmptyPlaylist(t *testing.T) {
 func TestPlaylistRepository_LargePlaylist(t *testing.T) {
 	repo := newTestPlaylistRepository()
 
-	// Create playlist with many tracks (1000)
+	// Create a playlist with many tracks (1000)
 	tracks := make([]domain.MusicTrack, 1000)
 	for i := 0; i < 1000; i++ {
 		tracks[i] = domain.MusicTrack{

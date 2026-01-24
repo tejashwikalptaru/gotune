@@ -290,16 +290,28 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH = "${{ github.workspace }}\${{ matrix.lib_path }};$env:PATH"
-      
-          $VERSION = (git describe --tags --always --dirty 2>$null).Trim()
-          if (-not $VERSION) { $VERSION = "dev" }
-      
-          $GIT_COMMIT = (git rev-parse --short HEAD 2>$null).Trim()
-          if (-not $GIT_COMMIT) { $GIT_COMMIT = "unknown" }
-      
-          $GIT_TAG = (git describe --tags --exact-match 2>$null).Trim()
-          if (-not $GIT_TAG) { $GIT_TAG = "" }
-      
+          
+          $VERSION = git describe --tags --always --dirty 2>$null
+          if ($null -eq $VERSION -or $VERSION -eq "") {
+            $VERSION = "dev"
+          } else {
+            $VERSION = $VERSION.Trim()
+          }
+            
+          $GIT_COMMIT = git rev-parse --short HEAD 2>$null
+          if ($null -eq $GIT_COMMIT -or $GIT_COMMIT -eq "") {
+            $GIT_COMMIT = "unknown"
+          } else {
+            $GIT_COMMIT = $GIT_COMMIT.Trim()
+          }
+            
+          $GIT_TAG = git describe --tags --exact-match 2>$null
+          if ($null -eq $GIT_TAG) {
+            $GIT_TAG = ""
+          } else {
+            $GIT_TAG = $GIT_TAG.Trim()
+          }
+            
           $BUILD_TIME = (Get-Date -AsUTC -Format "yyyy-MM-ddTHH:mm:ssZ")
           
           $env:GOFLAGS = @(

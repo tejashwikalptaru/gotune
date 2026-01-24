@@ -153,6 +153,7 @@ jobs:
         run: ./scripts/setup-libs.sh
 
       - name: Build binary
+        shell: bash
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}

@@ -1,4 +1,4 @@
-// Package widgets provides custom Fyne widgets for the GoTune application.
+// Package widgets provide custom Fyne widgets for the GoTune application.
 // This file re-exports visualizer types from the visualizer subpackage for backward compatibility.
 package widgets
 
@@ -23,6 +23,9 @@ const (
 	VisualizerTypeTunnel       = visualizer.TypeTunnel
 	VisualizerTypePlasma       = visualizer.TypePlasma
 	VisualizerTypeFFTSpectrum  = visualizer.TypeFFTSpectrum
+	VisualizerTypeGraph        = visualizer.TypeGraph
+	VisualizerTypeLEDBars      = visualizer.TypeLEDBars
+	VisualizerTypeRadial       = visualizer.TypeRadial
 )
 
 // VisualizerFactory creates a new visualizer of the specified type.

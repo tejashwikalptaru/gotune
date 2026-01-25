@@ -90,7 +90,7 @@ func NewMainWindow(app fyneapp.App) *MainWindow {
 		Width:  WIDTH,
 		Height: HEIGHT,
 	})
-	w.window.SetFixedSize(true)
+	// w.window.SetFixedSize(true)
 	w.app.SetIcon(res.ResourceIconPng)
 
 	// Detect theme

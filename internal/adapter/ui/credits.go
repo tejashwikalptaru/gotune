@@ -20,6 +20,17 @@ func CreditsWindow(app fyne.App, size fyne.Size) fyne.Window {
 	return w
 }
 
+// CreditsWindow returns a window displaying a list of licenses, with additional licenses provided
+func CreditsWindowWithCustomCredits(app fyne.App, size fyne.Size, customCredits []*Credit) fyne.Window {
+	if len(customCredits) > 0 {
+		credits = append(credits, customCredits...)
+	}
+	w := app.NewWindow("CREDITS")
+	w.Resize(size)
+	w.SetContent(CreditsContainer())
+	return w
+}
+
 // CreditsContainer returns a container displaying a list of licenses.
 func CreditsContainer() fyne.CanvasObject {
 	nameLabel := widget.NewLabel("")
@@ -29,7 +40,7 @@ func CreditsContainer() fyne.CanvasObject {
 	entry.Wrapping = fyne.TextWrapBreak
 	width := 0
 	for _, c := range credits {
-		l := len(c.name)
+		l := len(c.Name)
 		if l > width {
 			width = l
 		}
@@ -45,16 +56,16 @@ func CreditsContainer() fyne.CanvasObject {
 			return label
 		},
 		func(id widget.ListItemID, item fyne.CanvasObject) {
-			item.(*widget.Label).SetText(credits[id].name)
+			item.(*widget.Label).SetText(credits[id].Name)
 		},
 	)
 	list.OnSelected = func(id widget.ListItemID) {
 		c := credits[id]
-		nameLabel.SetText(c.name)
-		u, _ := url.Parse(c.url)
-		urlLabel.SetText(c.url)
+		nameLabel.SetText(c.Name)
+		u, _ := url.Parse(c.URL)
+		urlLabel.SetText(c.URL)
 		urlLabel.SetURL(u)
-		entry.SetText(c.text)
+		entry.SetText(c.Text)
 	}
 	list.Select(0)
 	text := container.NewScroll(entry)
@@ -67,11 +78,11 @@ func CreditsContainer() fyne.CanvasObject {
 	return splitContainer
 }
 
-type credit struct {
-	name, url, text string
+type Credit struct {
+	Name, URL, Text string
 }
 
-var credits = []*credit{
+var credits = []*Credit{
 	{
 		"Go (the standard library)",
 		"https://golang.org/",

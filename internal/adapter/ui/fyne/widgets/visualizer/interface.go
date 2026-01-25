@@ -14,6 +14,7 @@ const (
 	TypeCircular     Type = "circular"
 	TypeTunnel       Type = "tunnel"
 	TypePlasma       Type = "plasma"
+	TypeFFTSpectrum  Type = "fft_spectrum"
 )
 
 // MusicVisualizer defines the interface that all visualizers must implement.
@@ -42,6 +43,8 @@ func Factory(visType Type, numBars int) MusicVisualizer {
 		return NewTunnel()
 	case TypePlasma:
 		return NewPlasma()
+	case TypeFFTSpectrum:
+		return NewFFTSpectrum()
 	default:
 		return NewSpectrum(numBars)
 	}
@@ -61,5 +64,6 @@ func GetTypes() []TypeInfo {
 		{TypeCircular, "Circular"},
 		{TypeTunnel, "Tunnel"},
 		{TypePlasma, "Plasma"},
+		{TypeFFTSpectrum, "FFT Spectrum 3D"},
 	}
 }

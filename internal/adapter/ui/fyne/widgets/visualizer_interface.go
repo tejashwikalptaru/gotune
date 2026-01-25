@@ -22,6 +22,7 @@ const (
 	VisualizerTypeCircular     = visualizer.TypeCircular
 	VisualizerTypeTunnel       = visualizer.TypeTunnel
 	VisualizerTypePlasma       = visualizer.TypePlasma
+	VisualizerTypeFFTSpectrum  = visualizer.TypeFFTSpectrum
 )
 
 // VisualizerFactory creates a new visualizer of the specified type.

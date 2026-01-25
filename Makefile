@@ -35,7 +35,7 @@ endif
 
 # Generate credit
 generate-credits:
-	@which fyne-credits-generator > /dev/null || (echo "Installing fyne-credits-generator..." && go install github.com/lusingander/fyne-credits-generator/cmd/fyne-credits-generator@latest)
+	@which fyne-credits-generator > /dev/null || (echo "Installing fyne-credits-generator..." && go install github.com/tejashwikalptaru/fyne-credits-generator/cmd/fyne-credits-generator@latest)
 	@echo "Generating credits..."
 	fyne-credits-generator > internal/adapter/ui/credits.go
 	@echo "Done"

@@ -8,7 +8,7 @@
 //
 // Build:
 //
-//	go build -o build/gotune ./cmd
+//	go build -o build/gotune .
 //
 // Run:
 //

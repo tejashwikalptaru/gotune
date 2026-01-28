@@ -110,6 +110,40 @@ jobs:
 
           ls -la release-files/
 
+      - name: Scan release files with VirusTotal
+        id: virustotal
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          request_rate: 4
+          files: |
+            release-files/GoTune-*.zip
+            release-files/GoTune-*.tar.xz
+
+      - name: Format scan results
+        id: scan-results
+        run: |
+          # Parse the analysis output and create markdown table
+          TABLE="| Package | VirusTotal Analysis |
+          |---------|---------------------|"
+
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              FILE=$(echo "$line" | cut -d'=' -f1 | xargs basename)
+              URL=$(echo "$line" | cut -d'=' -f2-)
+              if [ -n "$FILE" ] && [ -n "$URL" ]; then
+                TABLE="$TABLE
+          | $FILE | [View Analysis]($URL) |"
+              fi
+            fi
+          done <<< "${{ steps.virustotal.outputs.analysis }}"
+
+          # Output as multiline string
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "table<<$EOF" >> $GITHUB_OUTPUT
+          echo "$TABLE" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+
       - name: Generate changelog
         run: |
           TAG="${{ needs.prepare-release.outputs.tag_name }}"
@@ -122,6 +156,8 @@ jobs:
             echo "No previous tag found, using last 20 commits"
             COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges -20)
           fi
+
+          SCAN_RESULTS='${{ steps.scan-results.outputs.table }}'
 
           cat > CHANGELOG.md << EOF
           ## What's Changed
@@ -136,6 +172,12 @@ jobs:
           | macOS (Apple Silicon) | GoTune-macOS-arm64.zip | gotune-darwin-arm64 |
           | Linux (x86_64) | GoTune-linux-amd64.tar.xz | gotune-linux-amd64 |
           | Windows (64-bit) | GoTune-windows-amd64.zip | gotune-windows-amd64.exe |
+
+          ## Security Scan
+
+          All packages have been scanned with VirusTotal:
+
+          $SCAN_RESULTS
           EOF
 
           cat CHANGELOG.md

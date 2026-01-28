@@ -110,7 +110,9 @@ func (w *PlaylistWindow) buildUI() {
 
 // createCell creates a new cell for the list.
 func (w *PlaylistWindow) createCell() fyneapp.CanvasObject {
-	return widgets.NewDoubleTapLabel(w.onCellDoubleTapped)
+	label := widgets.NewDoubleTapLabel(w.onCellDoubleTapped)
+	label.SetSecondaryTapped(w.onCellSecondaryTapped)
+	return label
 }
 
 // updateCell updates a list cell with track information.
@@ -126,6 +128,9 @@ func (w *PlaylistWindow) updateCell(i widget.ListItemID, obj fyneapp.CanvasObjec
 
 	track := w.data[i]
 	label.SetIndex(i)
+
+	// Ensure secondary tap callback is set (handles cell reuse)
+	label.SetSecondaryTapped(w.onCellSecondaryTapped)
 
 	// Display the track title or filename if the title is empty
 	displayText := track.Title
@@ -155,6 +160,41 @@ func (w *PlaylistWindow) onCellDoubleTapped(index int) {
 			w.presenter.logger.Error("error selecting track",
 				slog.Any("error", err),
 				slog.Int("index", actualIndex))
+		}
+	}
+}
+
+// onCellSecondaryTapped handles right-click (secondary tap) events on list cells.
+func (w *PlaylistWindow) onCellSecondaryTapped(index int, pos fyneapp.Position) {
+	if index < 0 || index >= len(w.data) {
+		return
+	}
+
+	// Create context menu with "Remove from playlist" item
+	removeItem := fyneapp.NewMenuItem("Remove from playlist", func() {
+		w.removeTrackAtIndex(index)
+	})
+
+	menu := fyneapp.NewMenu("", removeItem)
+	popup := widget.NewPopUpMenu(menu, w.window.Canvas())
+	popup.ShowAtPosition(pos)
+}
+
+// removeTrackAtIndex removes the track at the given filtered index from the playlist.
+func (w *PlaylistWindow) removeTrackAtIndex(filteredIndex int) {
+	// Map filtered index to actual index in the main collection
+	actualIndex := w.findActualIndex(filteredIndex)
+	if actualIndex == -1 {
+		return
+	}
+
+	// Route through presenter (MVP pattern)
+	if w.presenter != nil {
+		if err := w.presenter.OnPlaylistTrackRemoved(actualIndex); err != nil {
+			w.presenter.logger.Error("error removing track",
+				slog.Any("error", err),
+				slog.Int("actualIndex", actualIndex),
+				slog.Int("filteredIndex", filteredIndex))
 		}
 	}
 }

@@ -471,6 +471,7 @@ func (w *MainWindow) SetAlbumArt(imageData []byte) {
 			return
 		}
 
+		w.albumArt.Resource = nil // Clear Resource so Image takes effect
 		w.albumArt.Image = img
 		w.albumArt.Refresh()
 	})

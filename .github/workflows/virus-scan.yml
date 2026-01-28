@@ -1,0 +1,76 @@
+name: VirusTotal Scan
+
+on:
+  workflow_call:
+    inputs:
+      artifact_pattern:
+        description: 'Pattern to match artifacts to download'
+        required: false
+        type: string
+        default: 'GoTune-*'
+    outputs:
+      scan_results:
+        description: 'Markdown table of scan results'
+        value: ${{ jobs.scan.outputs.results }}
+    secrets:
+      VT_API_KEY:
+        required: true
+
+jobs:
+  scan:
+    name: Scan Packages
+    runs-on: ubuntu-latest
+    outputs:
+      results: ${{ steps.format.outputs.table }}
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ inputs.artifact_pattern }}
+          path: packages
+
+      - name: Flatten directory structure
+        run: |
+          mkdir -p scan-files
+          find packages -type f \( -name "*.zip" -o -name "*.tar.xz" \) -exec cp {} scan-files/ \;
+          echo "Files to scan:"
+          ls -la scan-files/
+
+      - name: Scan with VirusTotal
+        id: virustotal
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          request_rate: 4
+          files: |
+            scan-files/*.zip
+            scan-files/*.tar.xz
+
+      - name: Format scan results
+        id: format
+        run: |
+          echo "Raw VirusTotal output:"
+          echo "${{ steps.virustotal.outputs.analysis }}"
+
+          # Parse the analysis output and create markdown table
+          TABLE="| Package | VirusTotal Analysis |
+          |---------|---------------------|"
+
+          # The analysis output format is: file=analysisURL
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              # Extract filename and URL
+              FILE=$(echo "$line" | cut -d'=' -f1 | xargs basename)
+              URL=$(echo "$line" | cut -d'=' -f2-)
+              if [ -n "$FILE" ] && [ -n "$URL" ]; then
+                TABLE="$TABLE
+          | $FILE | [View Analysis]($URL) |"
+              fi
+            fi
+          done <<< "${{ steps.virustotal.outputs.analysis }}"
+
+          # Output as multiline string
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "table<<$EOF" >> $GITHUB_OUTPUT
+          echo "$TABLE" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT

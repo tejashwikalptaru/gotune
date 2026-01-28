@@ -529,6 +529,15 @@ func (p *Presenter) OnPlaylistTrackSelected(index int) error {
 	return p.playlistService.PlayTrackAt(index)
 }
 
+// OnPlaylistTrackRemoved handles track removal from the playlist by index.
+func (p *Presenter) OnPlaylistTrackRemoved(index int) error {
+	if err := p.playlistService.RemoveTrack(index); err != nil {
+		p.logger.Error("failed to remove track", slog.Any("error", err), slog.Int("index", index))
+		return err
+	}
+	return nil
+}
+
 // GetQueue returns the current queue.
 func (p *Presenter) GetQueue() []domain.MusicTrack {
 	return p.playlistService.GetQueue()

@@ -13,7 +13,7 @@ GoTune is a cross-platform music player written in Go with CGO dependencies for 
 
 #### macOS
 - Xcode Command Line Tools (`xcode-select --install`)
-- No additional setup required for native builds
+- No additional setup is required for native builds
 
 #### Linux
 - GCC (`sudo apt-get install build-essential` on Ubuntu/Debian)

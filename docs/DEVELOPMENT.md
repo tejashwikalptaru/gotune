@@ -177,8 +177,7 @@ GoTune follows **Clean Architecture** with strict layer separation and **Depende
 
 ```
 gotune/
-├── cmd/                          # Application entry point
-│   └── main.go                  # Production entry point
+├── main.go                     # Production entry point
 ├── internal/                    # Private application code
 │   ├── app/                     # Application layer (DI root)
 │   │   ├── app.go              # Dependency injection & orchestration

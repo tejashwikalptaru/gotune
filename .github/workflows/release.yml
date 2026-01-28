@@ -8,10 +8,15 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   prepare-release:
     name: Prepare Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required for git push tags
     outputs:
       should_release: ${{ steps.version.outputs.should_release }}
       new_version: ${{ steps.version.outputs.new_version }}

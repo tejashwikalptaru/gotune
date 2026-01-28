@@ -12,6 +12,9 @@ concurrency:
 env:
   GO_VERSION: '1.25'
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint

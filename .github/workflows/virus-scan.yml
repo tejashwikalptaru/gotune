@@ -16,6 +16,9 @@ on:
       VT_API_KEY:
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   scan:
     name: Scan Packages

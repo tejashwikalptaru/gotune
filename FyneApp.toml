@@ -1,0 +1,14 @@
+Website = "https://github.com/tejashwikalptaru/gotune"
+
+[Details]
+Icon = "Icon.png"
+Name = "Go Tune"
+ID = "com.gotune.app"
+Version = "0.0.1"
+Build = 0
+
+[LinuxAndBSD]
+GenericName = "Music Player"
+Categories = ["Audio", "Music", "Player", "AudioVideo"]
+Comment = "A lightweight music player built with Go and Fyne"
+Keywords = ["music", "audio", "player", "mp3", "flac"]

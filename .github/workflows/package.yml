@@ -1,0 +1,209 @@
+name: Package
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version string to embed'
+        required: false
+        type: string
+        default: ''
+      git_tag:
+        description: 'Git tag to embed'
+        required: false
+        type: string
+        default: ''
+
+env:
+  GO_VERSION: '1.25'
+  MODULE: github.com/tejashwikalptaru/gotune
+
+jobs:
+  package:
+    name: Package (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
+            goos: darwin
+            goarch: amd64
+            artifact_name: GoTune-macOS-amd64.zip
+            lib_path: build/libs/darwin
+            lib_file: libbass.dylib
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            artifact_name: GoTune-macOS-arm64.zip
+            lib_path: build/libs/darwin
+            lib_file: libbass.dylib
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            artifact_name: GoTune-linux-amd64.tar.xz
+            lib_path: build/libs/linux/x86_64
+            lib_file: libbass.so
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            artifact_name: GoTune-windows-amd64.zip
+            lib_path: build/libs/windows/x64
+            lib_file: bass.dll
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install fyne CLI
+        run: go install fyne.io/tools/cmd/fyne@latest
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libgl1-mesa-dev xorg-dev
+
+      - name: Setup BASS libraries
+        shell: bash
+        run: ./scripts/setup-libs.sh
+
+      - name: Package application (macOS)
+        if: runner.os == 'macOS'
+        env:
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/${{ matrix.lib_path }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+          fi
+
+          GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+          if [ -n "${{ inputs.git_tag }}" ]; then
+            GIT_TAG="${{ inputs.git_tag }}"
+          else
+            GIT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
+          fi
+
+          BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+          export GOFLAGS="
+          -ldflags=-X=${{ env.MODULE }}/internal/app.Version=${VERSION}
+          -ldflags=-X=${{ env.MODULE }}/internal/app.GitCommit=${GIT_COMMIT}
+          -ldflags=-X=${{ env.MODULE }}/internal/app.GitTag=${GIT_TAG}
+          -ldflags=-X=${{ env.MODULE }}/internal/app.BuildTime=${BUILD_TIME}
+          "
+
+          echo "GOFLAGS=$GOFLAGS"
+
+          fyne package -os darwin
+          install_name_tool -add_rpath @executable_path "Go Tune.app/Contents/MacOS/gotune"
+          cp ${{ matrix.lib_path }}/${{ matrix.lib_file }} "Go Tune.app/Contents/MacOS/"
+          zip -r "${{ matrix.artifact_name }}" "Go Tune.app"
+
+      - name: Package application (Linux)
+        if: runner.os == 'Linux'
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/${{ matrix.lib_path }}
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+          fi
+
+          GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+          if [ -n "${{ inputs.git_tag }}" ]; then
+            GIT_TAG="${{ inputs.git_tag }}"
+          else
+            GIT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
+          fi
+
+          BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+          export GOFLAGS="
+          -ldflags=-X=${{ env.MODULE }}/internal/app.Version=${VERSION}
+          -ldflags=-X=${{ env.MODULE }}/internal/app.GitCommit=${GIT_COMMIT}
+          -ldflags=-X=${{ env.MODULE }}/internal/app.GitTag=${GIT_TAG}
+          -ldflags=-X=${{ env.MODULE }}/internal/app.BuildTime=${BUILD_TIME}
+          "
+
+          echo "GOFLAGS=$GOFLAGS"
+
+          fyne package -os linux
+          mkdir -p package-tmp
+          tar -xf "Go Tune.tar.xz" -C package-tmp
+          cp ${{ matrix.lib_path }}/${{ matrix.lib_file }} package-tmp/usr/local/bin/
+          tar -cJf "${{ matrix.artifact_name }}" -C package-tmp .
+
+      - name: Package application (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:PATH = "${{ github.workspace }}\${{ matrix.lib_path }};$env:PATH"
+
+          if ("${{ inputs.version }}" -ne "") {
+            $VERSION = "${{ inputs.version }}"
+          } else {
+            $VERSION = git describe --tags --always --dirty 2>$null
+            if ($null -eq $VERSION -or $VERSION -eq "") {
+              $VERSION = "dev"
+            } else {
+              $VERSION = $VERSION.Trim()
+            }
+          }
+
+          $GIT_COMMIT = git rev-parse --short HEAD 2>$null
+          if ($null -eq $GIT_COMMIT -or $GIT_COMMIT -eq "") {
+            $GIT_COMMIT = "unknown"
+          } else {
+            $GIT_COMMIT = $GIT_COMMIT.Trim()
+          }
+
+          if ("${{ inputs.git_tag }}" -ne "") {
+            $GIT_TAG = "${{ inputs.git_tag }}"
+          } else {
+            $GIT_TAG = git describe --tags --exact-match 2>$null
+            if ($null -eq $GIT_TAG) {
+              $GIT_TAG = ""
+            } else {
+              $GIT_TAG = $GIT_TAG.Trim()
+            }
+          }
+
+          $BUILD_TIME = (Get-Date -AsUTC -Format "yyyy-MM-ddTHH:mm:ssZ")
+
+          $env:GOFLAGS = @(
+            "-ldflags=-X=${{ env.MODULE }}/internal/app.Version=$VERSION"
+            "-ldflags=-X=${{ env.MODULE }}/internal/app.GitCommit=$GIT_COMMIT"
+            "-ldflags=-X=${{ env.MODULE }}/internal/app.GitTag=$GIT_TAG"
+            "-ldflags=-X=${{ env.MODULE }}/internal/app.BuildTime=$BUILD_TIME"
+          ) -join " "
+
+          Write-Output "GOFLAGS=$env:GOFLAGS"
+
+          fyne package -os windows
+
+          New-Item -ItemType Directory -Force -Path package-tmp | Out-Null
+          Copy-Item "Go Tune.exe" package-tmp/
+          Copy-Item "${{ matrix.lib_path }}\${{ matrix.lib_file }}" package-tmp/
+          Compress-Archive -Path package-tmp\* -DestinationPath "${{ matrix.artifact_name }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}
+          retention-days: 7

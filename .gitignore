@@ -20,3 +20,4 @@ vendor/
 /gotune
 /GoTune.app/
 *.gtp
+*.app

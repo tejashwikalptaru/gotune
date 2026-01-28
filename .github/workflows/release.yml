@@ -1,0 +1,191 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare-release:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.version.outputs.should_release }}
+      new_version: ${{ steps.version.outputs.new_version }}
+      tag_name: ${{ steps.version.outputs.tag_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.ADMIN_TOKEN }}
+          fetch-depth: 0
+
+      - name: Calculate version and create tag
+        id: version
+        run: |
+          # Check if tag exists at HEAD
+          EXISTING_TAG=$(git describe --tags --exact-match HEAD 2>/dev/null || echo "")
+          if [ -n "$EXISTING_TAG" ]; then
+            echo "Tag already exists at HEAD: $EXISTING_TAG"
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Get latest tag or default
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+
+          VERSION=${LATEST_TAG#v}
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+          TAG_NAME="v${NEW_VERSION}"
+
+          echo "New version: $NEW_VERSION"
+          echo "Tag name: $TAG_NAME"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+          git push origin "$TAG_NAME"
+
+          echo "should_release=true" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+
+  build:
+    name: Build
+    needs: prepare-release
+    if: needs.prepare-release.outputs.should_release == 'true'
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.prepare-release.outputs.new_version }}
+      git_tag: ${{ needs.prepare-release.outputs.tag_name }}
+
+  package:
+    name: Package
+    needs: [prepare-release, build]
+    if: needs.prepare-release.outputs.should_release == 'true'
+    uses: ./.github/workflows/package.yml
+    with:
+      version: ${{ needs.prepare-release.outputs.new_version }}
+      git_tag: ${{ needs.prepare-release.outputs.tag_name }}
+
+  release:
+    name: Create Release
+    needs: [prepare-release, package]
+    if: needs.prepare-release.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release-files
+
+          # Copy binaries
+          cp release-artifacts/gotune-darwin-amd64/gotune-darwin-amd64 release-files/
+          cp release-artifacts/gotune-darwin-arm64/gotune-darwin-arm64 release-files/
+          cp release-artifacts/gotune-linux-amd64/gotune-linux-amd64 release-files/
+          cp release-artifacts/gotune-windows-amd64.exe/gotune-windows-amd64.exe release-files/
+
+          # Copy packages
+          cp release-artifacts/GoTune-macOS-amd64.zip/GoTune-macOS-amd64.zip release-files/
+          cp release-artifacts/GoTune-macOS-arm64.zip/GoTune-macOS-arm64.zip release-files/
+          cp release-artifacts/GoTune-linux-amd64.tar.xz/GoTune-linux-amd64.tar.xz release-files/
+          cp release-artifacts/GoTune-windows-amd64.zip/GoTune-windows-amd64.zip release-files/
+
+          ls -la release-files/
+
+      - name: Scan release files with VirusTotal
+        id: virustotal
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          request_rate: 4
+          files: |
+            release-files/GoTune-*.zip
+            release-files/GoTune-*.tar.xz
+
+      - name: Format scan results
+        id: scan-results
+        run: |
+          # Parse the analysis output and create markdown table
+          TABLE="| Package | VirusTotal Analysis |
+          |---------|---------------------|"
+
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              FILE=$(echo "$line" | cut -d'=' -f1 | xargs basename)
+              URL=$(echo "$line" | cut -d'=' -f2-)
+              if [ -n "$FILE" ] && [ -n "$URL" ]; then
+                TABLE="$TABLE
+          | $FILE | [View Analysis]($URL) |"
+              fi
+            fi
+          done <<< "${{ steps.virustotal.outputs.analysis }}"
+
+          # Output as multiline string
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "table<<$EOF" >> $GITHUB_OUTPUT
+          echo "$TABLE" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        run: |
+          TAG="${{ needs.prepare-release.outputs.tag_name }}"
+          PREV_TAG=$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || echo "")
+
+          if [ -n "$PREV_TAG" ]; then
+            echo "Generating changelog from $PREV_TAG to $TAG"
+            COMMITS=$(git log "$PREV_TAG..$TAG" --pretty=format:"- %s (%h)" --no-merges)
+          else
+            echo "No previous tag found, using last 20 commits"
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges -20)
+          fi
+
+          SCAN_RESULTS='${{ steps.scan-results.outputs.table }}'
+
+          cat > CHANGELOG.md << EOF
+          ## What's Changed
+
+          $COMMITS
+
+          ## Downloads
+
+          | Platform | Package | Binary |
+          |----------|---------|--------|
+          | macOS (Intel) | GoTune-macOS-amd64.zip | gotune-darwin-amd64 |
+          | macOS (Apple Silicon) | GoTune-macOS-arm64.zip | gotune-darwin-arm64 |
+          | Linux (x86_64) | GoTune-linux-amd64.tar.xz | gotune-linux-amd64 |
+          | Windows (64-bit) | GoTune-windows-amd64.zip | gotune-windows-amd64.exe |
+
+          ## Security Scan
+
+          All packages have been scanned with VirusTotal:
+
+          $SCAN_RESULTS
+          EOF
+
+          cat CHANGELOG.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare-release.outputs.tag_name }}
+          name: GoTune ${{ needs.prepare-release.outputs.tag_name }}
+          body_path: CHANGELOG.md
+          files: release-files/*

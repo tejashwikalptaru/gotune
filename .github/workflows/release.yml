@@ -119,24 +119,32 @@ jobs:
           files: |
             release-files/GoTune-*.zip
             release-files/GoTune-*.tar.xz
+            release-files/gotune-darwin-amd64
+            release-files/gotune-darwin-arm64
+            release-files/gotune-linux-amd64
+            release-files/gotune-windows-amd64.exe
 
       - name: Format scan results
         id: scan-results
         run: |
           # Parse the analysis output and create markdown table
-          TABLE="| Package | VirusTotal Analysis |
-          |---------|---------------------|"
+          TABLE="| File | VirusTotal Analysis |
+          |------|---------------------|"
 
+          # Convert comma-separated to newline-separated, then parse
+          # Use process substitution to avoid subshell issue with pipe
           while IFS= read -r line; do
             if [ -n "$line" ]; then
-              FILE=$(echo "$line" | cut -d'=' -f1 | xargs basename)
-              URL=$(echo "$line" | cut -d'=' -f2-)
+              # Extract filename (first part before =)
+              FILE=$(echo "$line" | sed 's/=.*//' | xargs basename)
+              # Extract URL (everything after first =)
+              URL=$(echo "$line" | sed 's/^[^=]*=//')
               if [ -n "$FILE" ] && [ -n "$URL" ]; then
                 TABLE="$TABLE
           | $FILE | [View Analysis]($URL) |"
               fi
             fi
-          done <<< "${{ steps.virustotal.outputs.analysis }}"
+          done < <(echo "${{ steps.virustotal.outputs.analysis }}" | tr ',' '\n')
 
           # Output as multiline string
           EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
@@ -175,7 +183,7 @@ jobs:
 
           ## Security Scan
 
-          All packages have been scanned with VirusTotal:
+          All release files have been scanned with VirusTotal:
 
           $SCAN_RESULTS
           EOF

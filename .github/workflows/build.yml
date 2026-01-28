@@ -1,0 +1,103 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version string to embed'
+        required: false
+        type: string
+        default: ''
+      git_tag:
+        description: 'Git tag to embed'
+        required: false
+        type: string
+        default: ''
+
+env:
+  GO_VERSION: '1.25'
+  MODULE: github.com/tejashwikalptaru/gotune
+
+jobs:
+  build:
+    name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
+            goos: darwin
+            goarch: amd64
+            binary: gotune-darwin-amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            binary: gotune-darwin-arm64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            binary: gotune-linux-amd64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            binary: gotune-windows-amd64.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libgl1-mesa-dev xorg-dev
+
+      - name: Setup BASS libraries
+        shell: bash
+        run: ./scripts/setup-libs.sh
+
+      - name: Build binary
+        shell: bash
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 1
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+          fi
+
+          GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+          if [ -n "${{ inputs.git_tag }}" ]; then
+            GIT_TAG="${{ inputs.git_tag }}"
+          else
+            GIT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
+          fi
+
+          BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+          go build -ldflags "\
+            -X '${{ env.MODULE }}/internal/app.Version=${VERSION}' \
+            -X '${{ env.MODULE }}/internal/app.GitCommit=${GIT_COMMIT}' \
+            -X '${{ env.MODULE }}/internal/app.GitTag=${GIT_TAG}' \
+            -X '${{ env.MODULE }}/internal/app.BuildTime=${BUILD_TIME}'" \
+            -o build/${{ matrix.binary }} ./
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.binary }}
+          path: build/${{ matrix.binary }}
+          retention-days: 7

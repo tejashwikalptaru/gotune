@@ -6,6 +6,7 @@ import (
 	"image"
 	"log/slog"
 	"math"
+	"net/url"
 	"sync"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	xdialog "fyne.io/x/fyne/dialog"
+	"github.com/tejashwikalptaru/gotune/internal/adapter/ui/credits"
 	customwidgets "github.com/tejashwikalptaru/gotune/internal/adapter/ui/fyne/widgets"
 	"github.com/tejashwikalptaru/gotune/res"
 )
@@ -29,6 +32,7 @@ import (
 type MainWindow struct {
 	app    fyneapp.App
 	window fyneapp.Window
+	logger *slog.Logger
 
 	// UI components
 	prevButton     *widget.Button
@@ -74,9 +78,10 @@ type MainWindow struct {
 }
 
 // NewMainWindow creates a new main window.
-func NewMainWindow(app fyneapp.App) *MainWindow {
+func NewMainWindow(logger *slog.Logger, app fyneapp.App) *MainWindow {
 	w := &MainWindow{
-		app: app,
+		app:    app,
+		logger: logger,
 	}
 
 	// Create a window
@@ -265,6 +270,15 @@ func (w *MainWindow) createMenu() []*fyneapp.Menu {
 	fileMenuItems := fyneapp.NewMenu("File", openFile, openFolder, separator, viewPlaylist, separator, exitMenu)
 	menus = append(menus, fileMenuItems)
 
+	creditsItem := fyneapp.NewMenuItem("Credits", func() {
+		w.showCreditsDialog()
+	})
+	aboutItem := fyneapp.NewMenuItem("About", func() {
+		w.showAboutDialog()
+	})
+	helpMenu := fyneapp.NewMenu("Help", creditsItem, aboutItem)
+	menus = append(menus, helpMenu)
+
 	return menus
 }
 
@@ -296,6 +310,44 @@ func (w *MainWindow) handleOpenFolder() {
 		}
 	}, slog.Default())
 	dialog.Show()
+}
+
+// showAboutDialog displays the About dialog with app information.
+func (w *MainWindow) showAboutDialog() {
+	// Build dynamic content by appending build info to embedded content
+	content := res.AboutContent + "\n\n**Build Info:**\n" +
+		"- Version: " + res.Version + "\n" +
+		"- Commit: " + res.GitCommit + "\n" +
+		"- Built: " + res.BuildTime
+
+	link, err := url.Parse("https://github.com/tejashwikalptaru/gotune")
+	if err != nil {
+		w.logger.Error("Failed to parse GitHub URL", slog.Any("error", err))
+		return
+	}
+	links := []*widget.Hyperlink{
+		widget.NewHyperlink("GitHub", link),
+	}
+
+	aboutDialog := xdialog.NewAbout(content, links, w.app, w.window)
+	aboutDialog.Show()
+}
+
+// showCreditsDialog displays the credits dialog for the application
+func (w *MainWindow) showCreditsDialog() {
+	additionalCredits := []*credits.Credit{
+		{
+			Name: "Un4seen Developments Ltd",
+			URL:  "https://www.un4seen.com/",
+			Text: credits.BassCredits,
+		},
+		{
+			Name: "audioMotion-analyzer",
+			URL:  "https://github.com/hvianna/audioMotion-analyzer",
+			Text: credits.VisCredits,
+		},
+	}
+	credits.CreditsWindowWithCustomCredits(w.app, fyneapp.NewSize(WIDTH, HEIGHT), additionalCredits).Show()
 }
 
 // addShortcuts adds keyboard shortcuts.

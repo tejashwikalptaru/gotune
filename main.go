@@ -20,11 +20,12 @@ import (
 	"log/slog"
 
 	"github.com/tejashwikalptaru/gotune/internal/app"
+	"github.com/tejashwikalptaru/gotune/res"
 )
 
 func main() {
 	// Log version at startup
-	versionInfo := app.GetVersionInfo()
+	versionInfo := res.GetVersionInfo()
 	slog.Info(versionInfo.FullString())
 
 	// Create default configuration

@@ -92,10 +92,10 @@ jobs:
           BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
           go build -ldflags "\
-            -X '${{ env.MODULE }}/internal/app.Version=${VERSION}' \
-            -X '${{ env.MODULE }}/internal/app.GitCommit=${GIT_COMMIT}' \
-            -X '${{ env.MODULE }}/internal/app.GitTag=${GIT_TAG}' \
-            -X '${{ env.MODULE }}/internal/app.BuildTime=${BUILD_TIME}'" \
+            -X '${{ env.MODULE }}/res.Version=${VERSION}' \
+            -X '${{ env.MODULE }}/res.GitCommit=${GIT_COMMIT}' \
+            -X '${{ env.MODULE }}/res.GitTag=${GIT_TAG}' \
+            -X '${{ env.MODULE }}/res.BuildTime=${BUILD_TIME}'" \
             -o build/${{ matrix.binary }} ./
 
       - name: Upload artifact

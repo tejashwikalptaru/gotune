@@ -8,10 +8,10 @@ BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 MODULE := github.com/tejashwikalptaru/gotune
 
 LDFLAGS := -ldflags "\
-	-X '$(MODULE)/internal/app.Version=$(VERSION)' \
-	-X '$(MODULE)/internal/app.GitCommit=$(GIT_COMMIT)' \
-	-X '$(MODULE)/internal/app.GitTag=$(GIT_TAG)' \
-	-X '$(MODULE)/internal/app.BuildTime=$(BUILD_TIME)'"
+	-X '$(MODULE)/res.Version=$(VERSION)' \
+	-X '$(MODULE)/res.GitCommit=$(GIT_COMMIT)' \
+	-X '$(MODULE)/res.GitTag=$(GIT_TAG)' \
+	-X '$(MODULE)/res.BuildTime=$(BUILD_TIME)'"
 
 # Detect operating system for library paths
 UNAME_S := $(shell uname -s)

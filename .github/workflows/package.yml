@@ -14,6 +14,9 @@ on:
         type: string
         default: ''
 
+permissions:
+  contents: read
+
 env:
   GO_VERSION: '1.25'
   MODULE: github.com/tejashwikalptaru/gotune
@@ -99,10 +102,10 @@ jobs:
           BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
           export GOFLAGS="
-          -ldflags=-X=${{ env.MODULE }}/internal/app.Version=${VERSION}
-          -ldflags=-X=${{ env.MODULE }}/internal/app.GitCommit=${GIT_COMMIT}
-          -ldflags=-X=${{ env.MODULE }}/internal/app.GitTag=${GIT_TAG}
-          -ldflags=-X=${{ env.MODULE }}/internal/app.BuildTime=${BUILD_TIME}
+          -ldflags=-X=${{ env.MODULE }}/res.Version=${VERSION}
+          -ldflags=-X=${{ env.MODULE }}/res.GitCommit=${GIT_COMMIT}
+          -ldflags=-X=${{ env.MODULE }}/res.GitTag=${GIT_TAG}
+          -ldflags=-X=${{ env.MODULE }}/res.BuildTime=${BUILD_TIME}
           "
 
           echo "GOFLAGS=$GOFLAGS"
@@ -134,10 +137,10 @@ jobs:
           BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
           export GOFLAGS="
-          -ldflags=-X=${{ env.MODULE }}/internal/app.Version=${VERSION}
-          -ldflags=-X=${{ env.MODULE }}/internal/app.GitCommit=${GIT_COMMIT}
-          -ldflags=-X=${{ env.MODULE }}/internal/app.GitTag=${GIT_TAG}
-          -ldflags=-X=${{ env.MODULE }}/internal/app.BuildTime=${BUILD_TIME}
+          -ldflags=-X=${{ env.MODULE }}/res.Version=${VERSION}
+          -ldflags=-X=${{ env.MODULE }}/res.GitCommit=${GIT_COMMIT}
+          -ldflags=-X=${{ env.MODULE }}/res.GitTag=${GIT_TAG}
+          -ldflags=-X=${{ env.MODULE }}/res.BuildTime=${BUILD_TIME}
           "
 
           echo "GOFLAGS=$GOFLAGS"
@@ -186,10 +189,10 @@ jobs:
           $BUILD_TIME = (Get-Date -AsUTC -Format "yyyy-MM-ddTHH:mm:ssZ")
 
           $env:GOFLAGS = @(
-            "-ldflags=-X=${{ env.MODULE }}/internal/app.Version=$VERSION"
-            "-ldflags=-X=${{ env.MODULE }}/internal/app.GitCommit=$GIT_COMMIT"
-            "-ldflags=-X=${{ env.MODULE }}/internal/app.GitTag=$GIT_TAG"
-            "-ldflags=-X=${{ env.MODULE }}/internal/app.BuildTime=$BUILD_TIME"
+            "-ldflags=-X=${{ env.MODULE }}/res.Version=$VERSION"
+            "-ldflags=-X=${{ env.MODULE }}/res.GitCommit=$GIT_COMMIT"
+            "-ldflags=-X=${{ env.MODULE }}/res.GitTag=$GIT_TAG"
+            "-ldflags=-X=${{ env.MODULE }}/res.BuildTime=$BUILD_TIME"
           ) -join " "
 
           Write-Output "GOFLAGS=$env:GOFLAGS"

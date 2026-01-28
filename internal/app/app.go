@@ -173,7 +173,7 @@ func NewApplication(config Config) (*Application, error) {
 	}
 
 	// Step 7: Create UI (Phase 8)
-	app.mainWindow = fyneui.NewMainWindow(app.fyneApp)
+	app.mainWindow = fyneui.NewMainWindow(app.logger.With(slog.String("window", "main_window")), app.fyneApp)
 
 	// Step 8: Create Presenter and wire with UI
 	app.presenter = fyneui.NewPresenter(

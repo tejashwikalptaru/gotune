@@ -13,9 +13,9 @@ var _ fyneapp.SecondaryTappable = (*DoubleTapLabel)(nil)
 // which is used in the playlist view for track selection.
 type DoubleTapLabel struct {
 	widget.Label
-	doubleTapped     func(index int)
-	secondaryTapped  func(index int, pos fyneapp.Position)
-	index            int
+	doubleTapped    func(index int)
+	secondaryTapped func(index int, pos fyneapp.Position)
+	index           int
 }
 
 // NewDoubleTapLabel creates a new DoubleTapLabel with the given callback function.
